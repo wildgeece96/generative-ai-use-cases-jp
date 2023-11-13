@@ -1,6 +1,6 @@
 import { Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { Auth, Api, Web, Database, Rag } from './construct';
+import { Auth, Api, Web, Database, Rag, Transcribe } from './construct';
 
 export class GenerativeAiUseCasesStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -8,9 +8,13 @@ export class GenerativeAiUseCasesStack extends Stack {
 
     process.env.overrideWarningsEnabled = 'false';
 
-    const ragEnabled: boolean = this.node.tryGetContext('ragEnabled') || false;
+    const ragEnabled: boolean = this.node.tryGetContext('ragEnabled')!;
+    const selfSignUpEnabled: boolean =
+      this.node.tryGetContext('selfSignUpEnabled')!;
 
-    const auth = new Auth(this, 'Auth');
+    const auth = new Auth(this, 'Auth', {
+      selfSignUpEnabled,
+    });
     const database = new Database(this, 'Database');
     const api = new Api(this, 'API', {
       userPool: auth.userPool,
@@ -25,6 +29,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       idPoolId: auth.idPool.identityPoolId,
       predictStreamFunctionArn: api.predictStreamFunction.functionArn,
       ragEnabled,
+      selfSignUpEnabled,
     });
 
     if (ragEnabled) {
@@ -33,6 +38,11 @@ export class GenerativeAiUseCasesStack extends Stack {
         api: api.api,
       });
     }
+
+    new Transcribe(this, 'Transcribe', {
+      userPool: auth.userPool,
+      api: api.api,
+    });
 
     new CfnOutput(this, 'Region', {
       value: this.region,
@@ -60,6 +70,10 @@ export class GenerativeAiUseCasesStack extends Stack {
 
     new CfnOutput(this, 'RagEnabled', {
       value: ragEnabled.toString(),
+    });
+
+    new CfnOutput(this, 'SelfSignUpEnabled', {
+      value: selfSignUpEnabled.toString(),
     });
   }
 }

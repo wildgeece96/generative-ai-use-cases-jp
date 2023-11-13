@@ -1,17 +1,17 @@
 import React, { useCallback, useMemo } from 'react';
 import { BaseProps } from '../@types/common';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useDrawer from '../hooks/useDrawer';
 import ButtonIcon from './ButtonIcon';
-import { PiSignOut, PiX, PiGithubLogo } from 'react-icons/pi';
-import { ReactComponent as MLLogo } from '../assets/model.svg';
+import { PiSignOut, PiX, PiGithubLogo, PiGear } from 'react-icons/pi';
+import { ReactComponent as BedrockIcon } from '../assets/bedrock.svg';
 import ChatList from './ChatList';
 
 export type ItemProps = BaseProps & {
   label: string;
   to: string;
   icon: JSX.Element;
-  usecase: boolean;
+  display: 'usecase' | 'tool' | 'none';
 };
 
 const Item: React.FC<ItemProps> = (props) => {
@@ -31,7 +31,7 @@ const Item: React.FC<ItemProps> = (props) => {
   }, []);
   return (
     <Link
-      className={`hover:bg-aws-sky flex h-8 items-center rounded p-2 ${
+      className={`hover:bg-aws-sky mt-0.5 flex h-8 items-center rounded p-2 ${
         location.pathname === props.to && 'bg-aws-sky'
       } ${props.className}`}
       to={props.to}
@@ -65,7 +65,7 @@ const RefLink: React.FC<RefLinkProps> = (props) => {
 
   return (
     <Link
-      className={`flex h-8 items-center rounded px-1 py-2 ${props.className}`}
+      className={`flex h-8 w-fit cursor-pointer items-center rounded px-1 py-2 ${props.className}`}
       to={props.to}
       onClick={onClick}
       target="_blank">
@@ -84,13 +84,14 @@ type Props = BaseProps & {
 
 const Drawer: React.FC<Props> = (props) => {
   const { opened, switchOpen } = useDrawer();
+  const navigate = useNavigate();
 
   const usecases = useMemo(() => {
-    return props.items.filter((i) => i.usecase);
+    return props.items.filter((i) => i.display === 'usecase');
   }, [props.items]);
 
   const tools = useMemo(() => {
-    return props.items.filter((i) => !i.usecase);
+    return props.items.filter((i) => i.display === 'tool');
   }, [props.items]);
 
   return (
@@ -109,26 +110,30 @@ const Drawer: React.FC<Props> = (props) => {
               label={item.label}
               icon={item.icon}
               to={item.to}
-              usecase={item.usecase}
+              display={item.display}
             />
           ))}
         </div>
         <div className="border-b" />
-        <div className="text-aws-smile mx-3 my-2 text-xs">
-          ツール <span className="text-gray-400">(非生成系AI)</span>
-        </div>
-        <div className="mb-1 ml-2 mr-1">
-          {tools.map((item, idx) => (
-            <Item
-              key={idx}
-              label={item.label}
-              icon={item.icon}
-              to={item.to}
-              usecase={item.usecase}
-            />
-          ))}
-        </div>
-        <div className="border-b" />
+        {tools.length > 0 && (
+          <>
+            <div className="text-aws-smile mx-3 my-2 text-xs">
+              ツール <span className="text-gray-400">(AIサービス)</span>
+            </div>
+            <div className="mb-1 ml-2 mr-1">
+              {tools.map((item, idx) => (
+                <Item
+                  key={idx}
+                  label={item.label}
+                  icon={item.icon}
+                  to={item.to}
+                  display={item.display}
+                />
+              ))}
+            </div>
+            <div className="border-b" />
+          </>
+        )}
         <div className="text-aws-smile mx-3 my-2  text-xs">会話履歴</div>
         <div className="scrollbar-thin scrollbar-thumb-white ml-2 mr-1 h-full overflow-y-auto">
           <ChatList className="mr-1" />
@@ -139,7 +144,7 @@ const Drawer: React.FC<Props> = (props) => {
 
           <RefLink
             to="https://aws.amazon.com/jp/bedrock/"
-            icon={<MLLogo className="w-4 fill-white" />}
+            icon={<BedrockIcon className="w-4 fill-white" />}
             label="Bedrock"
           />
           <RefLink
@@ -148,9 +153,16 @@ const Drawer: React.FC<Props> = (props) => {
             label="GitHub"
           />
         </div>
-        <div className="flex justify-end border-t border-gray-400 p-3">
+        <div className="flex justify-between border-t border-gray-400 px-1 py-2">
+          <ButtonIcon
+            onClick={() => {
+              navigate('/setting');
+            }}>
+            <PiGear className="mr-1 text-base" />
+            <span className="ml-1 text-sm">設定情報</span>
+          </ButtonIcon>
           <ButtonIcon onClick={props.signOut}>
-            <PiSignOut className="text-base" />
+            <PiSignOut className="mr-1 text-base" />
             <span className="ml-1 text-sm">サインアウト</span>
           </ButtonIcon>
         </div>

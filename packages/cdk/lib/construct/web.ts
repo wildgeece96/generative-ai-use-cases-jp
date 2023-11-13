@@ -12,6 +12,7 @@ export interface WebProps {
   idPoolId: string;
   predictStreamFunctionArn: string;
   ragEnabled: boolean;
+  selfSignUpEnabled: boolean;
 }
 
 export class Web extends Construct {
@@ -20,19 +21,23 @@ export class Web extends Construct {
   constructor(scope: Construct, id: string, props: WebProps) {
     super(scope, id);
 
+    const commonBucketProps: s3.BucketProps = {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      autoDeleteObjects: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
+      enforceSSL: true,
+    };
+
     const { cloudFrontWebDistribution, s3BucketInterface } = new CloudFrontToS3(
       this,
       'Web',
       {
         insertHttpSecurityHeaders: false,
-        bucketProps: {
-          blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-          encryption: s3.BucketEncryption.S3_MANAGED,
-          autoDeleteObjects: true,
-          removalPolicy: RemovalPolicy.DESTROY,
-          objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
-          enforceSSL: true,
-        },
+        loggingBucketProps: commonBucketProps,
+        bucketProps: commonBucketProps,
+        cloudFrontLoggingBucketProps: commonBucketProps,
         cloudFrontDistributionProps: {
           errorResponses: [
             {
@@ -76,6 +81,7 @@ export class Web extends Construct {
         VITE_APP_IDENTITY_POOL_ID: props.idPoolId,
         VITE_APP_PREDICT_STREAM_FUNCTION_ARN: props.predictStreamFunctionArn,
         VITE_APP_RAG_ENABLED: props.ragEnabled.toString(),
+        VITE_APP_SELF_SIGN_UP_ENABLED: props.selfSignUpEnabled.toString(),
       },
     });
 

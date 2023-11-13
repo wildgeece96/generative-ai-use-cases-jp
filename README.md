@@ -6,7 +6,7 @@ Generative AI（生成系 AI）は、ビジネスの変革に革新的な可能�
 
 ![sc_lp.png](/imgs/sc_lp.png)
 
-**このリポジトリでは、デフォルトでバージニア北部 (us-east-1) リージョンの Anthropic Claude モデルを利用する設定になっています。[Model access 画面](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess) を開き、「Edit」 → 「Anthropic Claude にチェック」 → 「Save changes」 と操作していただいて、バージニア北部リージョンにて Amazon Bedrock (基盤モデル: Claude) を利用できる状態にしてください。東京リージョンのモデルを利用する場合など、設定を変える方法については [モデル・リージョンの切り替え](#モデルリージョンの切り替え) をご確認ください。**
+> **生成系AIの進化に伴い、破壊的な変更を加えることが多々あります。エラーが発生した際は、まず最初にmainブランチの更新がないかご確認ください。**
 
 ## 機能一覧
 
@@ -56,7 +56,7 @@ Generative AI（生成系 AI）は、ビジネスの変革に革新的な可能�
 <details>
   <summary>校正</summary>
 
-  LLM は、文章の誤字脱字だけでなく文章を理解し改善点を指摘することが可能です。自分が書いたレポートを人に見せる前に LLM に自分では気づかなかった点を客観的に指摘してもらいクオリティを上げる効果が期待できます。
+  LLM は、誤字脱字のチェックだけでなく、文章の流れや内容を考慮したより客観的な視点から改善点を提案できます。人に見せる前に LLM に自分では気づかなかった点を客観的にチェックしてもらいクオリティを上げる効果が期待できます。
 
   <img src="/imgs/usecase_editorial.gif"/>
 </details>
@@ -69,6 +69,16 @@ Generative AI（生成系 AI）は、ビジネスの変革に革新的な可能�
   <img src="/imgs/usecase_translate.gif"/>
 </details>
 
+
+<details>
+  <summary>画像生成</summary>
+
+  画像生成 AI は、テキストや画像を元に新しい画像を生成できます。アイデアを即座に可視化することができ、デザイン作業などの効率化を期待できます。こちらの機能では、プロンプトの作成を LLM に支援してもらうことができます。
+
+  <img src="/imgs/usecase_generate_image.gif"/>
+</details>
+
+
 ## アーキテクチャ
 
 このサンプルでは、フロントエンドは React を用いて実装し、静的ファイルは Amazon CloudFront + Amazon S3 によって配信されています。バックエンドには Amazon API Gateway + AWS Lambda、認証には Amazon Congito を使用しています。また、LLM は Amazon Bedrock を使用します。RAG のデータソースには Amazon Kendra を利用しています。
@@ -77,7 +87,11 @@ Generative AI（生成系 AI）は、ビジネスの変革に革新的な可能�
 
 ## デプロイ
 
-[AWS Cloud Development Kit](https://aws.amazon.com/jp/cdk/)（以降 CDK）を利用してデプロイします。最初に、npm パッケージをインストールしてください。なお、全てのコマンドはルートディレクトリで実行してください。
+**このリポジトリでは、デフォルトでバージニア北部 (us-east-1) リージョンの Anthropic Claude モデルを利用する設定になっています。[Model access 画面](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess) を開き、「Edit」 → 「Anthropic Claude にチェック」 → 「Save changes」 と操作していただいて、バージニア北部リージョンにて Amazon Bedrock (基盤モデル: Claude) を利用できる状態にしてください。Claude Instant を利用する場合など、設定を変える方法については [Amazon Bedrock の違うモデルを利用したい場合](/docs/BEDROCK.md) をご確認ください。**
+
+アプリケーションは [AWS Cloud Development Kit](https://aws.amazon.com/jp/cdk/)（以降 CDK）を利用してデプロイします。CDK 環境の準備や、デプロイ手順の説明、セキュリティ機能の追加などを解説している [こちらのドキュメント](https://catalog.workshops.aws/generative-ai-use-cases-jp) で、より詳細な手順を確認できます。また、[こちらの動画](https://www.youtube.com/watch?v=9sMA17OKP1k)では、動画形式でもデプロイ手順を確認できます。
+
+以下にデプロイ手順を記載します。
 
 ```bash
 npm ci
@@ -94,6 +108,8 @@ npx -w packages/cdk cdk bootstrap
 ```bash
 npm run cdk:deploy
 ```
+
+- [参考 (別のモデル or リージョンを利用したい場合)](/docs/BEDROCK.md)
 
 ### RAG 有効化
 
@@ -117,30 +133,19 @@ npm run cdk:deploy
 
 Sync run history の Status / Summary に Completed が表示されれば完了です。AWS の Amazon Bedrock 関連のページをクローリングし、自動でドキュメントが追加されます。
 
-### モデル・リージョンの切り替え
+### 画像生成の有効化
 
-- デフォルトでは `us-east-1` の `anthropic.claude-v2` を利用しています。異なる設定を利用したい場合は [/docs/BEDROCK.md](docs/BEDROCK.md) をご確認ください。
-- Amazon Bedrock ではなく Amazon SageMaker にデプロイしたカスタムモデルを使うことも可能です。詳細は [/docs/SAGEMAKER.md](docs/SAGEMAKER.md) をご確認ください。
+画像生成のユースケースをご利用になる際は、Stability AI の Stable Diffusion XL モデルを有効化する必要があります。[Model access 画面](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess) を開き、「Edit」 → 「Stable Diffusion XL にチェック」 → 「Save changes」 と操作していただいて、バージニア北部リージョンにて Amazon Bedrock (基盤モデル: Stable Diffusion XL) を利用できる状態にしてください。なお、画像生成に関しては Stable Diffusion XL を有効化していない場合でもユースケースとして画面に表示されるため、注意してください。モデルを有効にしていない状態で実行するとエラーになります。
 
-## Pull Request を出す場合
-
-バグ修正や機能改善などの Pull Request は歓迎しております。コミットする前に、lint ツールを実行してください。
-
-```bash
-npm run lint
-```
-
-また、ローカル環境の構築手順については [/docs/DEVELOPMENT.md](/docs/DEVELOPMENT.md) をご確認ください。
-
-## 動画でデプロイ手順とデモンストレーションを紹介
-
-動画でデプロイ手順とデモンストレーションをご覧いただけます。以下のサムネイルをクリックして再生してください。なおデプロイ手順につきましては、詳細な手順を後述しております。
-
-| **デプロイ手順**                                                                                             | **デモンストレーション**                                                                             |
-|--------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
-| [![デプロイ手順](https://img.youtube.com/vi/9sMA17OKP1k/0.jpg)](https://www.youtube.com/watch?v=9sMA17OKP1k) | [![デモ](https://img.youtube.com/vi/rkKZZSuVZUU/0.jpg)](https://www.youtube.com/watch?v=rkKZZSuVZUU) |
-
-> 情報が古くなっている可能性があります。最新の手順については README.md をご確認ください。
+## その他のドキュメント
+- デプロイのオプション
+  - [Amazon Bedrock の違うモデル・リージョンを利用したい場合](/docs/BEDROCK.md)
+  - [Amazon SageMaker を利用したい場合](/docs/SAGEMAKER.md)
+  - [セキュリティ関連](/docs/SECURITY.md)
+- 開発
+  - [ローカル開発環境構築手順](/docs/DEVELOPMENT.md)
+  - [ユースケースの追加方法 (ブログ: Amazon Bedrock で Interpreter を開発!)](https://aws.amazon.com/jp/builders-flash/202311/bedrock-interpreter/#04)
+  - [リソースの削除方法](/docs/DESTROY.md)
 
 ## Security
 

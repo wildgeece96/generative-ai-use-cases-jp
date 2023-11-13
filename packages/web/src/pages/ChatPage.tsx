@@ -1,12 +1,12 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import InputChatContent from '../components/InputChatContent';
 import useChat from '../hooks/useChat';
-import { ChatPrompt } from '../prompts';
+import useConversation from '../hooks/useConversation';
 import ChatMessage from '../components/ChatMessage';
 import useScroll from '../hooks/useScroll';
 import { create } from 'zustand';
-import { ReactComponent as MLLogo } from '../assets/model.svg';
+import { ReactComponent as BedrockIcon } from '../assets/bedrock.svg';
 
 type StateType = {
   content: string;
@@ -29,9 +29,18 @@ const ChatPage: React.FC = () => {
   const { state, pathname } = useLocation();
   const { chatId } = useParams();
 
-  const { loading, loadingMessages, isEmpty, messages, clearChats, postChat } =
-    useChat(pathname, ChatPrompt.systemContext, chatId);
+  const { loading, loadingMessages, isEmpty, messages, clear, postChat } =
+    useChat(pathname, chatId);
   const { scrollToBottom, scrollToTop } = useScroll();
+  const { getConversationTitle } = useConversation();
+
+  const title = useMemo(() => {
+    if (chatId) {
+      return getConversationTitle(chatId) || 'チャット';
+    } else {
+      return 'チャット';
+    }
+  }, [chatId, getConversationTitle]);
 
   useEffect(() => {
     if (state !== null) {
@@ -48,10 +57,10 @@ const ChatPage: React.FC = () => {
   }, [content]);
 
   const onReset = useCallback(() => {
-    clearChats(ChatPrompt.systemContext);
+    clear();
     setContent('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clear]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -65,17 +74,17 @@ const ChatPage: React.FC = () => {
   return (
     <>
       <div className={`${!isEmpty ? 'pb-36' : ''}`}>
-        {isEmpty && !loadingMessages && (
-          <>
-            <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min">
-              チャット
-            </div>
-          </>
-        )}
+        <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min">
+          {title}
+        </div>
 
-        {loadingMessages && (
-          <div className="relative flex h-screen flex-col items-center justify-center">
-            <MLLogo className="animate-pulse fill-gray-400" />
+        {((isEmpty && !loadingMessages) || loadingMessages) && (
+          <div className="relative flex h-[calc(100vh-9rem)] flex-col items-center justify-center">
+            <BedrockIcon
+              className={`fill-gray-400 ${
+                loadingMessages ? 'animate-pulse' : ''
+              }`}
+            />
           </div>
         )}
 
@@ -95,6 +104,7 @@ const ChatPage: React.FC = () => {
           content={content}
           disabled={loading}
           onChangeContent={setContent}
+          resetDisabled={!!chatId}
           onSend={() => {
             onSend();
           }}

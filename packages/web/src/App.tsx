@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   PiDotsThreeVertical,
   PiList,
@@ -12,6 +12,9 @@ import {
   PiPenNib,
   PiMagnifyingGlass,
   PiTranslate,
+  PiImages,
+  PiSpeakerHighBold,
+  PiGear,
 } from 'react-icons/pi';
 import { Outlet } from 'react-router-dom';
 import Drawer, { ItemProps } from './components/Drawer';
@@ -24,58 +27,80 @@ import useDrawer from './hooks/useDrawer';
 import useConversation from './hooks/useConversation';
 
 const ragEnabled: boolean = import.meta.env.VITE_APP_RAG_ENABLED === 'true';
+const selfSignUpEnabled: boolean =
+  import.meta.env.VITE_APP_SELF_SIGN_UP_ENABLED === 'true';
 
 const items: ItemProps[] = [
   {
     label: 'ホーム',
     to: '/',
     icon: <PiHouse />,
-    usecase: true,
+    display: 'usecase' as const,
+  },
+  {
+    label: '設定情報',
+    to: '/setting',
+    icon: <PiGear />,
+    display: 'none' as const,
   },
   {
     label: 'チャット',
     to: '/chat',
     icon: <PiChatsCircle />,
-    usecase: true,
+    display: 'usecase' as const,
   },
   ragEnabled
     ? {
         label: 'RAG チャット',
         to: '/rag',
         icon: <PiChatCircleText />,
-        usecase: true,
+        display: 'usecase' as const,
       }
     : null,
   {
     label: '文章生成',
     to: '/generate',
     icon: <PiPencil />,
-    usecase: true,
+    display: 'usecase' as const,
   },
   {
     label: '要約',
     to: '/summarize',
     icon: <PiNote />,
-    usecase: true,
+    display: 'usecase' as const,
   },
   {
     label: '校正',
     to: '/editorial',
     icon: <PiPenNib />,
-    usecase: true,
+    display: 'usecase' as const,
   },
   {
     label: '翻訳',
     to: '/translate',
     icon: <PiTranslate />,
-    usecase: true,
+    display: 'usecase' as const,
   },
   {
-    label: 'Kendra 検索',
-    to: '/kendra',
-    icon: <PiMagnifyingGlass />,
-    usecase: false,
+    label: '画像生成',
+    to: '/image',
+    icon: <PiImages />,
+    display: 'usecase' as const,
   },
+  {
+    label: '音声認識',
+    to: '/transcribe',
+    icon: <PiSpeakerHighBold />,
+    display: 'tool' as const,
+  },
+  ragEnabled
+    ? {
+        label: 'Kendra 検索',
+        to: '/kendra',
+        icon: <PiMagnifyingGlass />,
+        display: 'tool' as const,
+      }
+    : null,
 ].flatMap((i) => (i !== null ? [i] : []));
 
 // /chat/:chatId の形式から :chatId を返す
@@ -101,6 +126,7 @@ const App: React.FC = () => {
   I18n.setLanguage('ja');
 
   const { switchOpen: switchDrawer } = useDrawer();
+  const navigate = useNavigate();
   const { pathname } = useLocation();
   const { getConversationTitle } = useConversation();
 
@@ -116,6 +142,7 @@ const App: React.FC = () => {
 
   return (
     <Authenticator
+      hideSignUp={!selfSignUpEnabled}
       components={{
         Header: () => (
           <div className="text-aws-font-color mb-5 mt-10 flex justify-center text-3xl">
@@ -144,6 +171,13 @@ const App: React.FC = () => {
               <div className="flex w-10 justify-end">
                 <MenuDropdown menu={<PiDotsThreeVertical />}>
                   <>
+                    <MenuItem
+                      icon={<PiGear />}
+                      onClick={() => {
+                        navigate('/setting');
+                      }}>
+                      設定情報
+                    </MenuItem>
                     <MenuItem
                       icon={<PiSignOut />}
                       onClick={() => {

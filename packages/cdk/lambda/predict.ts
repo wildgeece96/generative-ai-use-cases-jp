@@ -1,14 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { PredictRequest } from 'generative-ai-use-cases-jp';
-import sagemakerApi from './utils/sagemakerApi';
-import bedrockApi from './utils/bedrockApi';
-
-const modelType = process.env.MODEL_TYPE || 'bedrock';
-const api =
-  {
-    bedrock: bedrockApi,
-    sagemaker: sagemakerApi,
-  }[modelType] || bedrockApi;
+import api from './utils/api';
 
 export const handler = async (
   event: APIGatewayProxyEvent
