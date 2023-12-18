@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Location, useLocation } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Textarea from '../components/Textarea';
-import ExpandedField from '../components/ExpandedField';
+import ExpandableField from '../components/ExpandableField';
 import useChat from '../hooks/useChat';
 import { create } from 'zustand';
 import Texteditor from '../components/TextEditor';
 import { DocumentComment } from 'generative-ai-use-cases-jp';
 import debounce from 'lodash.debounce';
 import { editorialPrompt } from '../prompts';
+import { EditorialPageLocationState } from '../@types/navigate';
 
 const REGEX_BRACKET = /\{(?:[^{}])*\}/g;
 const REGEX_ZENKAKU =
@@ -75,7 +76,7 @@ const EditorialPage: React.FC = () => {
     clear,
   } = useEditorialPageState();
 
-  const { state } = useLocation();
+  const { state } = useLocation() as Location<EditorialPageLocationState>;
   const { pathname } = useLocation();
   const { loading, messages, postChat, clear: clearChat } = useChat(pathname);
 
@@ -224,7 +225,7 @@ const EditorialPage: React.FC = () => {
 
   return (
     <div className="grid grid-cols-12">
-      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min">
+      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
         校正
       </div>
       <div className="col-span-12 col-start-1 mx-2 lg:col-span-10 lg:col-start-2 xl:col-span-10 xl:col-start-2">
@@ -239,13 +240,13 @@ const EditorialPage: React.FC = () => {
             removeComment={removeComment}
           />
 
-          <ExpandedField label="追加コンテキスト" optional>
+          <ExpandableField label="追加コンテキスト" optional>
             <Textarea
               placeholder="追加で指摘してほしい点を入力することができます"
               value={additionalContext}
               onChange={setAdditionalContext}
             />
-          </ExpandedField>
+          </ExpandableField>
 
           <div className="flex justify-end gap-3">
             <Button outlined onClick={onClickClear} disabled={disabledExec}>

@@ -37,7 +37,9 @@ const useChatState = create<{
     id: string,
     content: string,
     mutateListChat: KeyedMutator<ListChatsResponse>,
-    ignoreHistory: boolean
+    ignoreHistory: boolean,
+    preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined,
+    postProcessOutput: ((message: string) => string) | undefined
   ) => void;
   sendFeedback: (
     id: string,
@@ -135,6 +137,12 @@ const useChatState = create<{
         for (const m of draft[id].messages) {
           if (!m.messageId) {
             m.messageId = uuid();
+            const match = id.match(/([^/]+)/);
+            if (match) {
+              m.usecase = '/' + match[1];
+            } else {
+              m.usecase = id;
+            }
             // 参照が切れるとエラーになるため clone する
             toBeRecordedMessages.push(
               Object.assign({}, m as ToBeRecordedMessage)
@@ -245,7 +253,11 @@ const useChatState = create<{
       id: string,
       content: string,
       mutateListChat,
-      ignoreHistory: boolean = false
+      ignoreHistory: boolean = false,
+      preProcessInput:
+        | ((message: ShownMessage[]) => ShownMessage[])
+        | undefined = undefined,
+      postProcessOutput: ((message: string) => string) | undefined = undefined
     ) => {
       setLoading(id, true);
 
@@ -272,14 +284,21 @@ const useChatState = create<{
       });
 
       const chatMessages = get().chats[id].messages;
+
+      // 最後のメッセージはアシスタントのメッセージなので、排除
+      // ignoreHistory が設定されている場合は最後の会話だけ反映（コスト削減）
+      let inputMessages = ignoreHistory
+        ? [chatMessages[0], ...chatMessages.slice(-2, -1)]
+        : chatMessages.slice(0, -1);
+
+      // メッセージの前処理（例：ログからの footnote の削除）
+      if (preProcessInput) {
+        inputMessages = preProcessInput(inputMessages);
+      }
+
+      // LLM へのリクエスト
       const stream = predictStream({
-        // 最後のメッセージはアシスタントのメッセージなので、排除
-        // ignoreHistory が設定されている場合は最後の会話だけ反映（コスト削減）
-        messages: omitUnusedMessageProperties(
-          ignoreHistory
-            ? [chatMessages[0], ...chatMessages.slice(-2, -1)]
-            : chatMessages.slice(0, -1)
-        ),
+        messages: omitUnusedMessageProperties(inputMessages),
       });
 
       // Assistant の発言を更新
@@ -289,14 +308,30 @@ const useChatState = create<{
             const oldAssistantMessage = draft[id].messages.pop()!;
             const newAssistantMessage: UnrecordedMessage = {
               role: 'assistant',
-              content: (oldAssistantMessage.content + chunk)
-                .replace(/(<output>|<\/output>)/g, '')
-                .trim(),
+              content: (oldAssistantMessage.content + chunk).replace(
+                /(<output>|<\/output>)/g,
+                ''
+              ),
             };
-
             draft[id].messages.push(newAssistantMessage);
           });
+          return {
+            chats: newChats,
+          };
+        });
+      }
 
+      // メッセージの後処理（例：footnote の付与）
+      if (postProcessOutput) {
+        set((state) => {
+          const newChats = produce(state.chats, (draft) => {
+            const oldAssistantMessage = draft[id].messages.pop()!;
+            const newAssistantMessage: UnrecordedMessage = {
+              role: 'assistant',
+              content: postProcessOutput(oldAssistantMessage.content),
+            };
+            draft[id].messages.push(newAssistantMessage);
+          });
           return {
             chats: newChats,
           };
@@ -400,10 +435,25 @@ const useChat = (id: string, chatId?: string) => {
     pushMessage: (role: Role, content: string) =>
       pushMessage(id, role, content),
     popMessage: () => popMessage(id),
+    rawMessages: chats[id]?.messages ?? [],
     messages: filteredMessages,
     isEmpty: filteredMessages.length === 0,
-    postChat: (content: string, ignoreHistory: boolean = false) => {
-      post(id, content, mutateConversations, ignoreHistory);
+    postChat: (
+      content: string,
+      ignoreHistory: boolean = false,
+      preProcessInput:
+        | ((message: ShownMessage[]) => ShownMessage[])
+        | undefined = undefined,
+      postProcessOutput: ((message: string) => string) | undefined = undefined
+    ) => {
+      post(
+        id,
+        content,
+        mutateConversations,
+        ignoreHistory,
+        preProcessInput,
+        postProcessOutput
+      );
     },
     sendFeedback: async (createdDate: string, feedback: string) => {
       await sendFeedback(id, createdDate, feedback);

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Location, useLocation } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Textarea from '../components/Textarea';
-import ExpandedField from '../components/ExpandedField';
+import ExpandableField from '../components/ExpandableField';
 import MenuDropdown from '../components/MenuDropdown';
 import MenuItem from '../components/MenuItem';
 import Markdown from '../components/Markdown';
@@ -13,6 +13,7 @@ import { create } from 'zustand';
 import debounce from 'lodash.debounce';
 import { PiCaretDown } from 'react-icons/pi';
 import { translatePrompt } from '../prompts';
+import { TranslatePageLocationState } from '../@types/navigate';
 
 const languages = [
   { label: '英語' },
@@ -84,8 +85,8 @@ const TranslatePage: React.FC = () => {
     clear,
   } = useTranslatePageState();
 
-  const { state } = useLocation();
-  const { pathname } = useLocation();
+  const { state, pathname } =
+    useLocation() as Location<TranslatePageLocationState>;
   const { loading, messages, postChat, clear: clearChat } = useChat(pathname);
 
   // Memo 変数
@@ -176,7 +177,7 @@ const TranslatePage: React.FC = () => {
 
   return (
     <div className="grid grid-cols-12">
-      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min">
+      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
         翻訳
       </div>
       <div className="col-span-12 col-start-1 mx-2 lg:col-span-10 lg:col-start-2 xl:col-span-10 xl:col-start-2">
@@ -213,19 +214,21 @@ const TranslatePage: React.FC = () => {
                   <div className="border-aws-sky h-5 w-5 animate-spin rounded-full border-4 border-t-transparent"></div>
                 )}
                 <div className="flex w-full justify-end">
-                  <ButtonCopy text={translatedSentence}></ButtonCopy>
+                  <ButtonCopy
+                    text={translatedSentence}
+                    interUseCasesKey="translatedSentence"></ButtonCopy>
                 </div>
               </div>
             </div>
           </div>
 
-          <ExpandedField label="追加コンテキスト" optional>
+          <ExpandableField label="追加コンテキスト" optional>
             <Textarea
               placeholder="追加で考慮してほしい点を入力することができます（カジュアルさ等）"
               value={additionalContext}
               onChange={setAdditionalContext}
             />
-          </ExpandedField>
+          </ExpandableField>
 
           <div className="flex justify-end gap-3">
             <Button outlined onClick={onClickClear} disabled={disabledExec}>

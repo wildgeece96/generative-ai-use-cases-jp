@@ -1,7 +1,7 @@
 import { Stack, RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { CloudFrontToS3 } from '@aws-solutions-constructs/aws-cloudfront-s3';
-import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
+import { CfnDistribution, Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { NodejsBuild } from 'deploy-time-build';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
@@ -13,6 +13,7 @@ export interface WebProps {
   predictStreamFunctionArn: string;
   ragEnabled: boolean;
   selfSignUpEnabled: boolean;
+  webAclId?: string;
 }
 
 export class Web extends Construct {
@@ -55,15 +56,34 @@ export class Web extends Construct {
       }
     );
 
+    if (props.webAclId) {
+      const existingCloudFrontWebDistribution = cloudFrontWebDistribution.node
+        .defaultChild as CfnDistribution;
+      existingCloudFrontWebDistribution.addPropertyOverride(
+        'DistributionConfig.WebACLId',
+        props.webAclId
+      );
+    }
+
     new NodejsBuild(this, 'BuildWeb', {
       assets: [
         {
           path: '../../',
           exclude: [
             '.git',
+            '.github',
+            '.gitignore',
+            '.prettierignore',
+            '.prettierrc.json',
+            '*.md',
+            'LICENSE',
+            'docs',
+            'imgs',
+            'setup-env.sh',
             'node_modules',
-            'packages/cdk/cdk.out',
-            'packages/cdk/node_modules',
+            'prompt-templates',
+            'packages/cdk/**/*',
+            '!packages/cdk/cdk.json',
             'packages/web/dist',
             'packages/web/node_modules',
           ],

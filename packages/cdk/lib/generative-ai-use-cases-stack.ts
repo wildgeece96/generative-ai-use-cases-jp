@@ -2,8 +2,23 @@ import { Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Auth, Api, Web, Database, Rag, Transcribe } from './construct';
 
+const errorMessageForBooleanContext = (key: string) => {
+  return `${key} の設定でエラーになりました。原因として考えられるものは以下です。
+ - cdk.json の変更ではなく、-c オプションで設定しようとしている
+ - cdk.json に boolean ではない値を設定している (例: "true" ダブルクォートは不要)
+ - cdk.json に項目がない (未設定)`;
+};
+
+interface GenerativeAiUseCasesStackProps extends StackProps {
+  webAclId?: string;
+}
+
 export class GenerativeAiUseCasesStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: GenerativeAiUseCasesStackProps
+  ) {
     super(scope, id, props);
 
     process.env.overrideWarningsEnabled = 'false';
@@ -11,9 +26,20 @@ export class GenerativeAiUseCasesStack extends Stack {
     const ragEnabled: boolean = this.node.tryGetContext('ragEnabled')!;
     const selfSignUpEnabled: boolean =
       this.node.tryGetContext('selfSignUpEnabled')!;
+    const allowedSignUpEmailDomains: string[] | null | undefined =
+      this.node.tryGetContext('allowedSignUpEmailDomains');
+
+    if (typeof ragEnabled !== 'boolean') {
+      throw new Error(errorMessageForBooleanContext('ragEnabled'));
+    }
+
+    if (typeof selfSignUpEnabled !== 'boolean') {
+      throw new Error(errorMessageForBooleanContext('selfSignUpEnabled'));
+    }
 
     const auth = new Auth(this, 'Auth', {
       selfSignUpEnabled,
+      allowedSignUpEmailDomains,
     });
     const database = new Database(this, 'Database');
     const api = new Api(this, 'API', {
@@ -30,6 +56,7 @@ export class GenerativeAiUseCasesStack extends Stack {
       predictStreamFunctionArn: api.predictStreamFunction.functionArn,
       ragEnabled,
       selfSignUpEnabled,
+      webAclId: props.webAclId,
     });
 
     if (ragEnabled) {
@@ -41,6 +68,7 @@ export class GenerativeAiUseCasesStack extends Stack {
 
     new Transcribe(this, 'Transcribe', {
       userPool: auth.userPool,
+      idPool: auth.idPool,
       api: api.api,
     });
 

@@ -3,13 +3,14 @@ import { useLocation } from 'react-router-dom';
 import Markdown from './Markdown';
 import ButtonCopy from './ButtonCopy';
 import ButtonFeedback from './ButtonFeedback';
-import { PiUserFill } from 'react-icons/pi';
+import { PiUserFill, PiChalkboardTeacher } from 'react-icons/pi';
 import { BaseProps } from '../@types/common';
 import { ShownMessage } from 'generative-ai-use-cases-jp';
 import { ReactComponent as BedrockIcon } from '../assets/bedrock.svg';
 import useChat from '../hooks/useChat';
 
 type Props = BaseProps & {
+  idx?: number;
   chatContent?: ShownMessage;
   loading?: boolean;
 };
@@ -42,7 +43,9 @@ const ChatMessage: React.FC<Props> = (props) => {
   return (
     <div
       className={`flex justify-center ${
-        chatContent?.role === 'assistant' ? 'bg-gray-100/70' : ''
+        chatContent?.role === 'assistant' || chatContent?.role === 'system'
+          ? 'bg-gray-100/70'
+          : ''
       }`}>
       <div
         className={`${
@@ -59,6 +62,11 @@ const ChatMessage: React.FC<Props> = (props) => {
               <BedrockIcon className="h-7 w-7 fill-white" />
             </div>
           )}
+          {chatContent?.role === 'system' && (
+            <div className="bg-aws-sky h-min rounded p-2 text-xl text-white">
+              <PiChalkboardTeacher />
+            </div>
+          )}
 
           <div className="ml-5 grow ">
             {chatContent?.role === 'user' && (
@@ -69,7 +77,7 @@ const ChatMessage: React.FC<Props> = (props) => {
               </div>
             )}
             {chatContent?.role === 'assistant' && (
-              <Markdown>
+              <Markdown prefix={`${props.idx}`}>
                 {chatContent.content +
                   `${
                     props.loading && (chatContent?.content ?? '') !== ''
@@ -78,14 +86,23 @@ const ChatMessage: React.FC<Props> = (props) => {
                   }`}
               </Markdown>
             )}
+            {chatContent?.role === 'system' && (
+              <div className="break-all">
+                {chatContent.content.split('\n').map((c, idx) => (
+                  <div key={idx}>{c}</div>
+                ))}
+              </div>
+            )}
             {props.loading && (chatContent?.content ?? '') === '' && (
               <div className="animate-pulse">▍</div>
             )}
           </div>
         </div>
 
-        <div className="flex items-start justify-end lg:-mr-24">
-          {chatContent?.role === 'user' && <div className="lg:w-8"></div>}
+        <div className="flex items-start justify-end print:hidden lg:-mr-24">
+          {(chatContent?.role === 'user' || chatContent?.role === 'system') && (
+            <div className="lg:w-8"></div>
+          )}
           {chatContent?.role === 'assistant' && !props.loading && (
             <>
               <ButtonCopy

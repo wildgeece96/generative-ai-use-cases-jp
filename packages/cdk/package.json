@@ -1,7 +1,6 @@
 {
   "name": "cdk",
   "private": true,
-  "version": "0.0.1",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
@@ -25,14 +24,16 @@
     "@aws-sdk/client-dynamodb": "^3.395.0",
     "@aws-sdk/client-kendra": "^3.418.0",
     "@aws-sdk/client-s3": "^3.431.0",
-    "@aws-sdk/client-transcribe": "^3.431.0",
-    "@aws-sdk/s3-request-presigner": "^3.431.0",
-    "@aws-sdk/lib-dynamodb": "^3.395.0",
     "@aws-sdk/client-sagemaker-runtime": "3.410.0",
+    "@aws-sdk/client-transcribe": "^3.431.0",
+    "@aws-sdk/client-transcribe-streaming": "^3.470.0",
+    "@aws-sdk/lib-dynamodb": "^3.395.0",
+    "@aws-sdk/s3-request-presigner": "^3.431.0",
     "@aws-solutions-constructs/aws-cloudfront-s3": "^2.41.0",
     "aws-cdk-lib": "2.100.0",
     "constructs": "^10.0.0",
     "deploy-time-build": "^0.3.2",
+    "node-html-parser": "^6.1.11",
     "source-map-support": "^0.5.21"
   }
 }

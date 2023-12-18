@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Location, useLocation } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Textarea from '../components/Textarea';
@@ -8,6 +8,7 @@ import ButtonCopy from '../components/ButtonCopy';
 import useChat from '../hooks/useChat';
 import { create } from 'zustand';
 import { generateTextPrompt } from '../prompts';
+import { GenerateTextPageLocationState } from '../@types/navigate';
 
 type StateType = {
   information: string;
@@ -58,7 +59,8 @@ const GenerateTextPage: React.FC = () => {
     setText,
     clear,
   } = useGenerateTextPageState();
-  const { state, pathname } = useLocation();
+  const { state, pathname } =
+    useLocation() as Location<GenerateTextPageLocationState>;
   const { loading, messages, postChat, clear: clearChat } = useChat(pathname);
 
   const disabledExec = useMemo(() => {
@@ -109,7 +111,7 @@ const GenerateTextPage: React.FC = () => {
 
   return (
     <div className="grid grid-cols-12">
-      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min">
+      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
         文章生成
       </div>
       <div className="col-span-12 col-start-1 mx-2 lg:col-span-10 lg:col-start-2 xl:col-span-10 xl:col-start-2">
@@ -148,7 +150,7 @@ const GenerateTextPage: React.FC = () => {
               <div className="border-aws-sky h-5 w-5 animate-spin rounded-full border-4 border-t-transparent"></div>
             )}
             <div className="flex w-full justify-end">
-              <ButtonCopy text={text}></ButtonCopy>
+              <ButtonCopy text={text} interUseCasesKey="text"></ButtonCopy>
             </div>
           </div>
         </Card>

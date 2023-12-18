@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Location, useLocation } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import ExpandedField from '../components/ExpandedField';
+import ExpandableField from '../components/ExpandableField';
 import Textarea from '../components/Textarea';
 import Markdown from '../components/Markdown';
 import ButtonCopy from '../components/ButtonCopy';
 import useChat from '../hooks/useChat';
 import { create } from 'zustand';
 import { summarizePrompt } from '../prompts';
+import { SummarizePageLocationState } from '../@types/navigate';
 
 type StateType = {
   sentence: string;
@@ -59,7 +60,8 @@ const SummarizePage: React.FC = () => {
     setSummarizedSentence,
     clear,
   } = useSummarizePageState();
-  const { state, pathname } = useLocation();
+  const { state, pathname } =
+    useLocation() as Location<SummarizePageLocationState>;
   const { loading, messages, postChat, clear: clearChat } = useChat(pathname);
 
   const disabledExec = useMemo(() => {
@@ -112,7 +114,7 @@ const SummarizePage: React.FC = () => {
 
   return (
     <div className="grid grid-cols-12">
-      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min">
+      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
         要約
       </div>
       <div className="col-span-12 col-start-1 mx-2 lg:col-span-10 lg:col-start-2 xl:col-span-10 xl:col-start-2">
@@ -124,13 +126,13 @@ const SummarizePage: React.FC = () => {
             maxHeight={-1}
           />
 
-          <ExpandedField label="追加コンテキスト" optional>
+          <ExpandableField label="追加コンテキスト" optional>
             <Textarea
               placeholder="追加で考慮してほしい点を入力することができます（カジュアルさ等）"
               value={additionalContext}
               onChange={setAdditionalContext}
             />
-          </ExpandedField>
+          </ExpandableField>
 
           <div className="flex justify-end gap-3">
             <Button outlined onClick={onClickClear} disabled={disabledExec}>
@@ -153,7 +155,9 @@ const SummarizePage: React.FC = () => {
               <div className="border-aws-sky h-5 w-5 animate-spin rounded-full border-4 border-t-transparent"></div>
             )}
             <div className="flex w-full justify-end">
-              <ButtonCopy text={summarizedSentence}></ButtonCopy>
+              <ButtonCopy
+                text={summarizedSentence}
+                interUseCasesKey="summarizedSentence"></ButtonCopy>
             </div>
           </div>
         </Card>

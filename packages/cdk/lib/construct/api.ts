@@ -176,6 +176,7 @@ export class Api extends Construct {
       timeout: Duration.minutes(15),
       environment: {
         TABLE_NAME: table.tableName,
+        MODEL_TYPE: modelType,
       },
     });
     table.grantWriteData(createMessagesFunction);
@@ -245,6 +246,12 @@ export class Api extends Construct {
         PROMPT_TEMPLATE_FILE: promptTemplateFile,
         IMAGE_GEN_MODEL_NAME: imageGenerateModelName,
       },
+    });
+
+    const getWebTextFunction = new NodejsFunction(this, 'GetWebText', {
+      runtime: Runtime.NODEJS_18_X,
+      entry: './lambda/getWebText.ts',
+      timeout: Duration.minutes(15),
     });
 
     // API Gateway
@@ -375,9 +382,19 @@ export class Api extends Construct {
     );
 
     const settingResource = api.root.addResource('setting');
+    // GET: /setting
     settingResource.addMethod(
       'GET',
       new LambdaIntegration(settingFunction),
+      commonAuthorizerProps
+    );
+
+    // Web コンテンツ抽出のユースケースで利用
+    const webTextResource = api.root.addResource('web-text');
+    // GET: /web-text
+    webTextResource.addMethod(
+      'GET',
+      new LambdaIntegration(getWebTextFunction),
       commonAuthorizerProps
     );
 

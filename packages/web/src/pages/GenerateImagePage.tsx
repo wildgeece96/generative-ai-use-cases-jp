@@ -12,10 +12,11 @@ import SketchPad from '../components/SketchPad';
 import ModalDialog from '../components/ModalDialog';
 import { produce } from 'immer';
 import Help from '../components/Help';
-import { useLocation } from 'react-router-dom';
+import { Location, useLocation } from 'react-router-dom';
 import useChat from '../hooks/useChat';
 import Base64Image from '../components/Base64Image';
 import { AxiosError } from 'axios';
+import { GenerateImagePageLocationState } from '../@types/navigate';
 
 const MAX_SAMPLE = 7;
 
@@ -212,7 +213,8 @@ const GenerateImagePage: React.FC = () => {
     clear,
   } = useGenerateImagePageState();
 
-  const { pathname, state } = useLocation();
+  const { pathname, state } =
+    useLocation() as Location<GenerateImagePageLocationState>;
   const { generate } = useImage();
   const { loading: loadingChat, clear: clearChat } = useChat(pathname);
 
@@ -315,6 +317,7 @@ const GenerateImagePage: React.FC = () => {
   );
 
   const clearAll = useCallback(() => {
+    setSelectedImageIndex(0);
     clear();
     clearChat();
   }, [clear, clearChat]);
@@ -346,14 +349,21 @@ const GenerateImagePage: React.FC = () => {
                 content={chatContent}
                 onChangeContent={setChatContent}
                 isGeneratingImage={generating}
-                onGenerate={(p, np, sp) => {
-                  setSelectedImageIndex(0);
-                  setPrompt(p);
-                  setNegativePrompt(np);
-                  if (sp !== undefined) {
-                    setStylePreset(sp);
+                onGenerate={async (p, np, sp) => {
+                  // 設定に変更があった場合のみ生成する
+                  if (
+                    p !== prompt ||
+                    np !== negativePrompt ||
+                    (sp ?? '') !== stylePreset
+                  ) {
+                    setSelectedImageIndex(0);
+                    setPrompt(p);
+                    setNegativePrompt(np);
+                    if (sp !== undefined) {
+                      setStylePreset(sp);
+                    }
+                    return generateImage(p, np, sp);
                   }
-                  return generateImage(p, np, sp);
                 }}
               />
             </div>
