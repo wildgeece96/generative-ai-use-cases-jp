@@ -3,11 +3,11 @@
 
 # Generative AI Use Cases JP
 
-Generative AI（生成系 AI）は、ビジネスの変革に革新的な可能性をもたらします。このリポジトリでは、Generative AI を活用したビジネスユースケースをデモンストレーションしています。
+Generative AI（生成 AI）は、ビジネスの変革に革新的な可能性をもたらします。このリポジトリでは、Generative AI を活用したビジネスユースケースをデモンストレーションしています。
 
 ![sc_lp.png](/imgs/sc_lp.png)
 
-> **生成系AIの進化に伴い、破壊的な変更を加えることが多々あります。エラーが発生した際は、まず最初にmainブランチの更新がないかご確認ください。**
+> **生成AIの進化に伴い、破壊的な変更を加えることが多々あります。エラーが発生した際は、まず最初にmainブランチの更新がないかご確認ください。**
 
 ## ユースケース一覧
 
@@ -88,7 +88,7 @@ Generative AI（生成系 AI）は、ビジネスの変革に革新的な可能�
 ## デプロイ
 
 > [!IMPORTANT]
-> このリポジトリでは、デフォルトでバージニア北部リージョン (us-east-1) の Anthropic Claude モデルを利用する設定になっています。[Model access 画面 (us-east-1)](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess)を開き、Anthropic Claude にチェックして Save changes してください。Claude Instant を利用する場合など、設定を変更する方法については [Amazon Bedrock の違うモデルを利用したい場合](/docs/BEDROCK.md)を参照してください。
+> このリポジトリでは、デフォルトでバージニア北部リージョン (us-east-1) の Anthropic Claude モデルを利用する設定になっています。[Model access 画面 (us-east-1)](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess)を開き、Anthropic Claude にチェックして Save changes してください。Claude Instant を利用する場合など、設定を変更する方法については [Amazon Bedrock のモデルを変更する](/docs/DEPLOY_OPTION.md#amazon-bedrock-のモデルを変更する) を参照してください。
 
 アプリケーションは [AWS Cloud Development Kit](https://aws.amazon.com/jp/cdk/)（以降 CDK）を利用してデプロイします。Step-by-Step の解説、あるいは、別のデプロイ手段を利用する場合は以下を参照してください。
 - [Workshop](https://catalog.workshops.aws/generative-ai-use-cases-jp)
@@ -115,22 +115,22 @@ npm run cdk:deploy
 ## [デプロイオプション](/docs/DEPLOY_OPTION.md)
 - [設定方法](/docs/DEPLOY_OPTION.md#設定方法)
   - [cdk.json の値を変更する方法](/docs/DEPLOY_OPTION.md#cdkjson-の値を変更する方法)
-  - [`-c` オプションで変更する方法](/docs/DEPLOY_OPTION.md#-c-オプションで変更する方法)
 - [ユースケースの設定](/docs/DEPLOY_OPTION.md#ユースケースの設定)
   - [RAG チャットユースケースの有効化](/docs/DEPLOY_OPTION.md#rag-チャットユースケースの有効化)
     - [既存の Amazon Kendra Index を利用したい場合](/docs/DEPLOY_OPTION.md#既存の-amazon-kendra-index-を利用したい場合)
-  - [画像生成の有効化](/docs/DEPLOY_OPTION.md#画像生成の有効化)
-- [Amazon Bedrock の違うモデルを利用したい場合](/docs/DEPLOY_OPTION.md#amazon-bedrock-の違うモデルを利用したい場合)
-  - [ap-northeast-1 (東京) の Amazon Bedrock Claude Instant を利用する例](/docs/DEPLOY_OPTION.md#ap-northeast-1-東京-の-amazon-bedrock-claude-instant-を利用する例)
-  - [us-east-1 (バージニア) の Amazon Bedrock Claude Instant を利用する例](/docs/DEPLOY_OPTION.md#us-east-1-バージニア-の-amazon-bedrock-claude-instant-を利用する例)
+- [Amazon Bedrock のモデルを変更する](/docs/DEPLOY_OPTION.md#amazon-bedrock-のモデルを変更する)
+  - [us-east-1 (バージニア) の Amazon Bedrock のモデルを利用する例](/docs/DEPLOY_OPTION.md#us-east-1-バージニア-の-amazon-bedrock-のモデルを利用する例)
+  - [ap-northeast-1 (東京) の Amazon Bedrock のモデルを利用する例](/docs/DEPLOY_OPTION.md#ap-northeast-1-東京-の-amazon-bedrock-のモデルを利用する例)
 - [Amazon SageMaker のカスタムモデルを利用したい場合](/docs/DEPLOY_OPTION.md#amazon-sagemaker-のカスタムモデルを利用したい場合)
-  - [Rinna 3.6B を利用する例](/docs/DEPLOY_OPTION.md#rinna-36b-を利用する例)
-  - [Bilingual Rinna 4B を利用する例](/docs/DEPLOY_OPTION.md#bilingual-rinna-4b-を利用する例)
+  - [Rinna 3.6B と Bilingual Rinna 4B を利用する例](/docs/DEPLOY_OPTION.md#rinna-36b-と-bilingual-rinna-4b-を利用する例)
   - [ELYZA-japanese-Llama-2-7b-instruct を利用する例](/docs/DEPLOY_OPTION.md#elyza-japanese-llama-2-7b-instruct-を利用する例)
 - [セキュリティ関連設定](/docs/DEPLOY_OPTION.md#セキュリティ関連設定)
   - [セルフサインアップを無効化する](/docs/DEPLOY_OPTION.md#セルフサインアップを無効化する)
   - [サインアップできるメールアドレスのドメインを制限する](/docs/DEPLOY_OPTION.md#サインアップできるメールアドレスのドメインを制限する)
-  - [AWS WAF による IP 制限を有効化する](/docs/DEPLOY_OPTION.md#aws-waf-による-ip-制限を有効化する)
+  - [AWS WAF による制限を有効化する](/docs/DEPLOY_OPTION.md#aws-waf-による制限を有効化する)
+    - [IP 制限](/docs/DEPLOY_OPTION.md#IP-アドレスによる制限)
+    - [地理的制限](/docs/DEPLOY_OPTION.md#地理的制限)
+- [モニタリング用のダッシュボードの有効化](/docs/DEPLOY_OPTION.md#モニタリング用のダッシュボードの有効化)
 
 ## その他
  - [ローカル開発環境構築手順](/docs/DEVELOPMENT.md)

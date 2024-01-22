@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Markdown from './Markdown';
 import ButtonCopy from './ButtonCopy';
@@ -8,11 +8,13 @@ import { BaseProps } from '../@types/common';
 import { ShownMessage } from 'generative-ai-use-cases-jp';
 import { ReactComponent as BedrockIcon } from '../assets/bedrock.svg';
 import useChat from '../hooks/useChat';
+import useTyping from '../hooks/useTyping';
 
 type Props = BaseProps & {
   idx?: number;
   chatContent?: ShownMessage;
   loading?: boolean;
+  hideFeedback?: boolean;
 };
 
 const ChatMessage: React.FC<Props> = (props) => {
@@ -23,6 +25,16 @@ const ChatMessage: React.FC<Props> = (props) => {
   const { pathname } = useLocation();
   const { sendFeedback } = useChat(pathname);
   const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+
+  const { setTypingTextInput, typingTextOutput } = useTyping(
+    chatContent?.role === 'assistant' && props.loading
+  );
+
+  useEffect(() => {
+    if (chatContent?.content) {
+      setTypingTextInput(chatContent?.content);
+    }
+  }, [chatContent, setTypingTextInput]);
 
   const disabled = useMemo(() => {
     return isSendingFeedback || !props.chatContent?.id;
@@ -51,7 +63,7 @@ const ChatMessage: React.FC<Props> = (props) => {
         className={`${
           props.className ?? ''
         } m-3 flex w-full flex-col justify-between md:w-11/12 lg:-ml-24 lg:w-4/6 lg:flex-row xl:w-3/6`}>
-        <div className="flex">
+        <div className="flex grow">
           {chatContent?.role === 'user' && (
             <div className="bg-aws-sky h-min rounded p-2 text-xl text-white">
               <PiUserFill />
@@ -59,7 +71,7 @@ const ChatMessage: React.FC<Props> = (props) => {
           )}
           {chatContent?.role === 'assistant' && (
             <div className="bg-aws-ml h-min rounded p-1">
-              <BedrockIcon className="h-7 w-7 fill-white" />
+              <BedrockIcon className="size-7 fill-white" />
             </div>
           )}
           {chatContent?.role === 'system' && (
@@ -71,14 +83,14 @@ const ChatMessage: React.FC<Props> = (props) => {
           <div className="ml-5 grow ">
             {chatContent?.role === 'user' && (
               <div className="break-all">
-                {chatContent.content.split('\n').map((c, idx) => (
+                {typingTextOutput.split('\n').map((c, idx) => (
                   <div key={idx}>{c}</div>
                 ))}
               </div>
             )}
             {chatContent?.role === 'assistant' && (
               <Markdown prefix={`${props.idx}`}>
-                {chatContent.content +
+                {typingTextOutput +
                   `${
                     props.loading && (chatContent?.content ?? '') !== ''
                       ? '▍'
@@ -88,7 +100,7 @@ const ChatMessage: React.FC<Props> = (props) => {
             )}
             {chatContent?.role === 'system' && (
               <div className="break-all">
-                {chatContent.content.split('\n').map((c, idx) => (
+                {typingTextOutput.split('\n').map((c, idx) => (
                   <div key={idx}>{c}</div>
                 ))}
               </div>
@@ -96,41 +108,49 @@ const ChatMessage: React.FC<Props> = (props) => {
             {props.loading && (chatContent?.content ?? '') === '' && (
               <div className="animate-pulse">▍</div>
             )}
+
+            {chatContent?.role === 'assistant' && (
+              <div className="mb-1 mt-2 text-right text-xs text-gray-400 lg:mb-0">
+                {chatContent?.llmType}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="flex items-start justify-end print:hidden lg:-mr-24">
+        <div className="flex items-start justify-end lg:-mr-24 print:hidden">
           {(chatContent?.role === 'user' || chatContent?.role === 'system') && (
             <div className="lg:w-8"></div>
           )}
-          {chatContent?.role === 'assistant' && !props.loading && (
-            <>
-              <ButtonCopy
-                className="mr-0.5 text-gray-400"
-                text={chatContent.content}
-              />
-              {chatContent && (
-                <>
-                  <ButtonFeedback
-                    className="mx-0.5"
-                    feedback="good"
-                    message={chatContent}
-                    disabled={disabled}
-                    onClick={() => {
-                      onSendFeedback('good');
-                    }}
-                  />
-                  <ButtonFeedback
-                    className="ml-0.5"
-                    feedback="bad"
-                    message={chatContent}
-                    disabled={disabled}
-                    onClick={() => onSendFeedback('bad')}
-                  />
-                </>
-              )}
-            </>
-          )}
+          {chatContent?.role === 'assistant' &&
+            !props.loading &&
+            !props.hideFeedback && (
+              <>
+                <ButtonCopy
+                  className="mr-0.5 text-gray-400"
+                  text={chatContent?.content || ''}
+                />
+                {chatContent && (
+                  <>
+                    <ButtonFeedback
+                      className="mx-0.5"
+                      feedback="good"
+                      message={chatContent}
+                      disabled={disabled}
+                      onClick={() => {
+                        onSendFeedback('good');
+                      }}
+                    />
+                    <ButtonFeedback
+                      className="ml-0.5"
+                      feedback="bad"
+                      message={chatContent}
+                      disabled={disabled}
+                      onClick={() => onSendFeedback('bad')}
+                    />
+                  </>
+                )}
+              </>
+            )}
         </div>
       </div>
     </div>

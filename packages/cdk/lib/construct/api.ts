@@ -14,7 +14,6 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { IdentityPool } from '@aws-cdk/aws-cognito-identitypool-alpha';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { readFileSync } from 'fs';
 
 export interface BackendApiProps {
   userPool: UserPool;
@@ -25,31 +24,48 @@ export interface BackendApiProps {
 export class Api extends Construct {
   readonly api: RestApi;
   readonly predictStreamFunction: NodejsFunction;
+  readonly modelRegion: string;
+  readonly modelIds: string[];
+  readonly imageGenerationModelIds: string[];
+  readonly endpointNames: string[];
 
   constructor(scope: Construct, id: string, props: BackendApiProps) {
     super(scope, id);
 
     const { userPool, table, idPool } = props;
 
-    // sagemaker | bedrock
-    const modelType = this.node.tryGetContext('modelType') || 'bedrock';
     // region for bedrock / sagemaker
     const modelRegion = this.node.tryGetContext('modelRegion') || 'us-east-1';
-    // model name for bedrock / sagemaker
-    const modelName =
-      this.node.tryGetContext('modelName') || 'anthropic.claude-v2';
-    // image generate model name for bedrock / sagemaker
-    const imageGenerateModelName =
-      this.node.tryGetContext('imageGenerateModelName') ||
-      'stability.stable-diffusion-xl-v0';
 
-    // prompt template
-    const promptTemplateFile =
-      this.node.tryGetContext('promptTemplate') || 'claude.json';
-    const promptTemplate = readFileSync(
-      '../../prompt-templates/' + promptTemplateFile,
-      'utf-8'
-    );
+    // Model IDs
+    const modelIds: string[] = this.node.tryGetContext('modelIds') || [
+      'anthropic.claude-v2',
+    ];
+    const imageGenerationModelIds: string[] = this.node.tryGetContext(
+      'imageGenerationModelIds'
+    ) || ['stability.stable-diffusion-xl-v0'];
+    const endpointNames: string[] =
+      this.node.tryGetContext('endpointNames') || [];
+
+    // Validate Model Names
+    const supportedModelIds = [
+      'anthropic.claude-v2:1',
+      'anthropic.claude-v2',
+      'anthropic.claude-instant-v1',
+      'stability.stable-diffusion-xl-v0',
+      'stability.stable-diffusion-xl-v1',
+      'amazon.titan-image-generator-v1',
+    ];
+    for (const modelId of modelIds) {
+      if (!supportedModelIds.includes(modelId)) {
+        throw new Error(`Unsupported Model Name: ${modelId}`);
+      }
+    }
+    for (const modelId of imageGenerationModelIds) {
+      if (!supportedModelIds.includes(modelId)) {
+        throw new Error(`Unsupported Model Name: ${modelId}`);
+      }
+    }
 
     // Lambda
     const predictFunction = new NodejsFunction(this, 'Predict', {
@@ -57,10 +73,9 @@ export class Api extends Construct {
       entry: './lambda/predict.ts',
       timeout: Duration.minutes(15),
       environment: {
-        MODEL_TYPE: modelType,
         MODEL_REGION: modelRegion,
-        MODEL_NAME: modelName,
-        PROMPT_TEMPLATE: promptTemplate,
+        MODEL_IDS: JSON.stringify(modelIds),
+        IMAGE_GENERATION_MODEL_IDS: JSON.stringify(imageGenerationModelIds),
       },
       bundling: {
         nodeModules: ['@aws-sdk/client-bedrock-runtime'],
@@ -72,10 +87,9 @@ export class Api extends Construct {
       entry: './lambda/predictStream.ts',
       timeout: Duration.minutes(15),
       environment: {
-        MODEL_TYPE: modelType,
         MODEL_REGION: modelRegion,
-        MODEL_NAME: modelName,
-        PROMPT_TEMPLATE: promptTemplate,
+        MODEL_IDS: JSON.stringify(modelIds),
+        IMAGE_GENERATION_MODEL_IDS: JSON.stringify(imageGenerationModelIds),
       },
       bundling: {
         nodeModules: [
@@ -98,10 +112,9 @@ export class Api extends Construct {
       },
       environment: {
         TABLE_NAME: table.tableName,
-        MODEL_TYPE: modelType,
         MODEL_REGION: modelRegion,
-        MODEL_NAME: modelName,
-        PROMPT_TEMPLATE: promptTemplate,
+        MODEL_IDS: JSON.stringify(modelIds),
+        IMAGE_GENERATION_MODEL_IDS: JSON.stringify(imageGenerationModelIds),
       },
     });
     table.grantWriteData(predictTitleFunction);
@@ -111,44 +124,45 @@ export class Api extends Construct {
       entry: './lambda/generateImage.ts',
       timeout: Duration.minutes(15),
       environment: {
-        MODEL_TYPE: modelType,
         MODEL_REGION: modelRegion,
-        MODEL_NAME: modelName,
-        PROMPT_TEMPLATE: promptTemplate,
-        IMAGE_GEN_MODEL_NAME: imageGenerateModelName,
+        MODEL_IDS: JSON.stringify(modelIds),
+        IMAGE_GENERATION_MODEL_IDS: JSON.stringify(imageGenerationModelIds),
       },
       bundling: {
         nodeModules: ['@aws-sdk/client-bedrock-runtime'],
       },
     });
 
-    if (modelType == 'sagemaker') {
+    // SageMaker Endpoint がある場合は権限付与
+    if (endpointNames.length > 0) {
       // SageMaker Policy
       const sagemakerPolicy = new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['sagemaker:DescribeEndpoint', 'sagemaker:InvokeEndpoint'],
-        resources: [
-          `arn:aws:sagemaker:${modelRegion}:${
-            Stack.of(this).account
-          }:endpoint/${modelName}`,
-        ],
+        resources: endpointNames.map(
+          (endpointName) =>
+            `arn:aws:sagemaker:${modelRegion}:${
+              Stack.of(this).account
+            }:endpoint/${endpointName}`
+        ),
       });
       predictFunction.role?.addToPrincipalPolicy(sagemakerPolicy);
       predictStreamFunction.role?.addToPrincipalPolicy(sagemakerPolicy);
       predictTitleFunction.role?.addToPrincipalPolicy(sagemakerPolicy);
       generateImageFunction.role?.addToPrincipalPolicy(sagemakerPolicy);
-    } else {
-      // Bedrock Policy
-      const bedrockPolicy = new PolicyStatement({
-        effect: Effect.ALLOW,
-        resources: ['*'],
-        actions: ['bedrock:*', 'logs:*'],
-      });
-      predictStreamFunction.role?.addToPrincipalPolicy(bedrockPolicy);
-      predictFunction.role?.addToPrincipalPolicy(bedrockPolicy);
-      predictTitleFunction.role?.addToPrincipalPolicy(bedrockPolicy);
-      generateImageFunction.role?.addToPrincipalPolicy(bedrockPolicy);
     }
+
+    // Bedrock は常に権限付与
+    // Bedrock Policy
+    const bedrockPolicy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      resources: ['*'],
+      actions: ['bedrock:*', 'logs:*'],
+    });
+    predictStreamFunction.role?.addToPrincipalPolicy(bedrockPolicy);
+    predictFunction.role?.addToPrincipalPolicy(bedrockPolicy);
+    predictTitleFunction.role?.addToPrincipalPolicy(bedrockPolicy);
+    generateImageFunction.role?.addToPrincipalPolicy(bedrockPolicy);
 
     const createChatFunction = new NodejsFunction(this, 'CreateChat', {
       runtime: Runtime.NODEJS_18_X,
@@ -176,7 +190,6 @@ export class Api extends Construct {
       timeout: Duration.minutes(15),
       environment: {
         TABLE_NAME: table.tableName,
-        MODEL_TYPE: modelType,
       },
     });
     table.grantWriteData(createMessagesFunction);
@@ -235,24 +248,51 @@ export class Api extends Construct {
     });
     table.grantWriteData(updateFeedbackFunction);
 
-    const settingFunction = new NodejsFunction(this, 'Setting', {
-      runtime: Runtime.NODEJS_18_X,
-      entry: './lambda/setting.ts',
-      timeout: Duration.minutes(15),
-      environment: {
-        MODEL_TYPE: modelType,
-        MODEL_REGION: modelRegion,
-        MODEL_NAME: modelName,
-        PROMPT_TEMPLATE_FILE: promptTemplateFile,
-        IMAGE_GEN_MODEL_NAME: imageGenerateModelName,
-      },
-    });
-
     const getWebTextFunction = new NodejsFunction(this, 'GetWebText', {
       runtime: Runtime.NODEJS_18_X,
       entry: './lambda/getWebText.ts',
       timeout: Duration.minutes(15),
     });
+
+    const createShareId = new NodejsFunction(this, 'CreateShareId', {
+      runtime: Runtime.NODEJS_18_X,
+      entry: './lambda/createShareId.ts',
+      timeout: Duration.minutes(15),
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
+    });
+    table.grantWriteData(createShareId);
+
+    const getSharedChat = new NodejsFunction(this, 'GetSharedChat', {
+      runtime: Runtime.NODEJS_18_X,
+      entry: './lambda/getSharedChat.ts',
+      timeout: Duration.minutes(15),
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
+    });
+    table.grantReadData(getSharedChat);
+
+    const findShareId = new NodejsFunction(this, 'FindShareId', {
+      runtime: Runtime.NODEJS_18_X,
+      entry: './lambda/findShareId.ts',
+      timeout: Duration.minutes(15),
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
+    });
+    table.grantReadData(findShareId);
+
+    const deleteShareId = new NodejsFunction(this, 'DeleteShareId', {
+      runtime: Runtime.NODEJS_18_X,
+      entry: './lambda/deleteShareId.ts',
+      timeout: Duration.minutes(15),
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
+    });
+    table.grantReadWriteData(deleteShareId);
 
     // API Gateway
     const authorizer = new CognitoUserPoolsAuthorizer(this, 'Authorizer', {
@@ -381,14 +421,6 @@ export class Api extends Construct {
       commonAuthorizerProps
     );
 
-    const settingResource = api.root.addResource('setting');
-    // GET: /setting
-    settingResource.addMethod(
-      'GET',
-      new LambdaIntegration(settingFunction),
-      commonAuthorizerProps
-    );
-
     // Web コンテンツ抽出のユースケースで利用
     const webTextResource = api.root.addResource('web-text');
     // GET: /web-text
@@ -398,7 +430,43 @@ export class Api extends Construct {
       commonAuthorizerProps
     );
 
+    const shareResource = api.root.addResource('shares');
+    const shareChatIdResource = shareResource
+      .addResource('chat')
+      .addResource('{chatId}');
+    // GET: /shares/chat/{chatId}
+    shareChatIdResource.addMethod(
+      'GET',
+      new LambdaIntegration(findShareId),
+      commonAuthorizerProps
+    );
+    // POST: /shares/chat/{chatId}
+    shareChatIdResource.addMethod(
+      'POST',
+      new LambdaIntegration(createShareId),
+      commonAuthorizerProps
+    );
+    const shareShareIdResource = shareResource
+      .addResource('share')
+      .addResource('{shareId}');
+    // GET: /shares/share/{shareId}
+    shareShareIdResource.addMethod(
+      'GET',
+      new LambdaIntegration(getSharedChat),
+      commonAuthorizerProps
+    );
+    // DELETE: /shares/share/{shareId}
+    shareShareIdResource.addMethod(
+      'DELETE',
+      new LambdaIntegration(deleteShareId),
+      commonAuthorizerProps
+    );
+
     this.api = api;
     this.predictStreamFunction = predictStreamFunction;
+    this.modelRegion = modelRegion;
+    this.modelIds = modelIds;
+    this.imageGenerationModelIds = imageGenerationModelIds;
+    this.endpointNames = endpointNames;
   }
 }

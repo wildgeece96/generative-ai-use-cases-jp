@@ -8,6 +8,7 @@ import {
   Chat,
   ListChatsResponse,
   Role,
+  Model,
 } from 'generative-ai-use-cases-jp';
 import { useEffect, useMemo } from 'react';
 import { v4 as uuid } from 'uuid';
@@ -31,6 +32,7 @@ const useChatState = create<{
   clear: (id: string) => void;
   restore: (id: string, messages: RecordedMessage[], chat: Chat) => void;
   updateSystemContext: (id: string, systemContext: string) => void;
+  getCurrentSystemContext: (id: string) => string;
   pushMessage: (id: string, role: Role, content: string) => void;
   popMessage: (id: string) => ShownMessage | undefined;
   post: (
@@ -38,6 +40,7 @@ const useChatState = create<{
     content: string,
     mutateListChat: KeyedMutator<ListChatsResponse>,
     ignoreHistory: boolean,
+    model: Model | undefined,
     preProcessInput: ((message: ShownMessage[]) => ShownMessage[]) | undefined,
     postProcessOutput: ((message: string) => string) | undefined
   ) => void;
@@ -225,6 +228,16 @@ const useChatState = create<{
         };
       });
     },
+    getCurrentSystemContext: (id: string) => {
+      const chat = get().chats[id];
+
+      if (chat) {
+        return chat.messages.filter((message) => message.role === 'system')[0]
+          .content;
+      }
+
+      return '';
+    },
     pushMessage: (id: string, role: Role, content: string) => {
       set((state) => {
         return {
@@ -253,7 +266,8 @@ const useChatState = create<{
       id: string,
       content: string,
       mutateListChat,
-      ignoreHistory: boolean = false,
+      ignoreHistory: boolean,
+      model: Model | undefined,
       preProcessInput:
         | ((message: ShownMessage[]) => ShownMessage[])
         | undefined = undefined,
@@ -298,6 +312,7 @@ const useChatState = create<{
 
       // LLM へのリクエスト
       const stream = predictStream({
+        model: model,
         messages: omitUnusedMessageProperties(inputMessages),
       });
 
@@ -312,6 +327,7 @@ const useChatState = create<{
                 /(<output>|<\/output>)/g,
                 ''
               ),
+              llmType: model?.modelId,
             };
             draft[id].messages.push(newAssistantMessage);
           });
@@ -329,6 +345,7 @@ const useChatState = create<{
             const newAssistantMessage: UnrecordedMessage = {
               role: 'assistant',
               content: postProcessOutput(oldAssistantMessage.content),
+              llmType: model?.modelId,
             };
             draft[id].messages.push(newAssistantMessage);
           });
@@ -389,6 +406,7 @@ const useChat = (id: string, chatId?: string) => {
     post,
     sendFeedback,
     updateSystemContext,
+    getCurrentSystemContext,
     pushMessage,
     popMessage,
   } = useChatState();
@@ -432,6 +450,9 @@ const useChat = (id: string, chatId?: string) => {
     updateSystemContext: (systemContext: string) => {
       updateSystemContext(id, systemContext);
     },
+    getCurrentSystemContext: () => {
+      return getCurrentSystemContext(id);
+    },
     pushMessage: (role: Role, content: string) =>
       pushMessage(id, role, content),
     popMessage: () => popMessage(id),
@@ -441,6 +462,7 @@ const useChat = (id: string, chatId?: string) => {
     postChat: (
       content: string,
       ignoreHistory: boolean = false,
+      model: Model | undefined = undefined,
       preProcessInput:
         | ((message: ShownMessage[]) => ShownMessage[])
         | undefined = undefined,
@@ -451,6 +473,7 @@ const useChat = (id: string, chatId?: string) => {
         content,
         mutateConversations,
         ignoreHistory,
+        model,
         preProcessInput,
         postProcessOutput
       );

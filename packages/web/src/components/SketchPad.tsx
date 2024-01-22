@@ -31,7 +31,7 @@ const SketchButton: React.FC<SketchButtonProps> = (props) => {
     <div
       className={`${
         props.className ?? ''
-      } flex h-6 w-6 cursor-pointer items-center justify-center border ${
+      } flex size-6 cursor-pointer items-center justify-center border ${
         props.isActive ? 'border-black/50 bg-gray-200' : ''
       }`}
       onClick={props.onClick}>
@@ -155,7 +155,7 @@ const SketchPad: React.FC<Props> = (props) => {
       };
     }
   };
-  const onClickUploadComplet = useCallback(() => {
+  const onClickUploadComplete = useCallback(() => {
     props.onChange(imageBase64);
   }, [imageBase64, props]);
 
@@ -182,7 +182,7 @@ const SketchPad: React.FC<Props> = (props) => {
               }}>
               キャンセル
             </Button>
-            <Button onClick={onClickUploadComplet}>完了</Button>
+            <Button onClick={onClickUploadComplete}>完了</Button>
           </div>
         </div>
       </ModalDialog>

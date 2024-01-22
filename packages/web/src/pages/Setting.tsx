@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
 import { Auth } from 'aws-amplify';
-import useChatApi from '../hooks/useChatApi';
 import useVersion from '../hooks/useVersion';
 import { Link } from 'react-router-dom';
 import Help from '../components/Help';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
+import { MODELS } from '../hooks/useModel';
+import useGitHub, { PullRequest } from '../hooks/useGitHub';
+import { PiGithubLogoFill, PiArrowSquareOut } from 'react-icons/pi';
 
 const ragEnabled: boolean = import.meta.env.VITE_APP_RAG_ENABLED === 'true';
 
@@ -21,25 +23,28 @@ const SettingItem = (props: {
           {props.name}
           {props.helpMessage && <Help message={props.helpMessage} />}
         </div>
-        <div>{props.value}</div>
+        <div className="text-right">{props.value}</div>
       </div>
     </div>
   );
 };
 
 const Setting = () => {
-  const { getSetting } = useChatApi();
-  const { data: setting, error, isLoading } = getSetting();
+  const { modelRegion, modelIds, imageGenModelIds } = MODELS;
   const { getLocalVersion, getHasUpdate } = useVersion();
+  const { getClosedPullRequests } = useGitHub();
+
   const localVersion = getLocalVersion();
   const hasUpdate = getHasUpdate();
+  const closedPullRequests = getClosedPullRequests();
+
   const signOut = useCallback(async () => {
     await Auth.signOut();
   }, []);
 
   return (
     <div>
-      <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
+      <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min print:visible print:my-5 print:h-min">
         設定情報
       </div>
 
@@ -69,75 +74,74 @@ const Setting = () => {
         <SettingItem name="RAG 有効" value={ragEnabled.toString()} />
       </div>
 
-      <div className="my-3 flex justify-center font-semibold">生成系 AI</div>
+      <div className="my-3 flex justify-center font-semibold">生成 AI</div>
 
-      {isLoading && (
-        <div className="flex justify-center text-sm">読み込み中...</div>
-      )}
-
-      {!isLoading && error && (
-        <div className="flex justify-center text-sm">
-          エラーで取得できませんでした
+      <div className="flex w-full flex-col items-center text-sm">
+        <SettingItem name="LLM モデル名" value={modelIds.join(', ')} />
+        <SettingItem
+          name="画像生成 モデル名"
+          value={imageGenModelIds.join(', ')}
+        />
+        <SettingItem
+          name="LLM & 画像生成 モデルリージョン"
+          value={modelRegion}
+        />
+        <div className="mt-5 w-2/3 text-xs lg:w-1/2">
+          設定の変更はこの画面ではなく
+          <Link
+            className="text-aws-smile"
+            to="https://docs.aws.amazon.com/ja_jp/cdk/v2/guide/home.html"
+            target="_blank">
+            AWS CDK
+          </Link>
+          で行います。 また、ユースケース実行時にエラーになる場合は、必ず
+          <span className="font-bold">{modelRegion}</span> にて指定したモデル
+          を有効化しているか確認してください。それぞれのやり方については
+          <Link
+            className="text-aws-smile"
+            to="https://github.com/aws-samples/generative-ai-use-cases-jp"
+            target="_blank">
+            generative-ai-use-cases-jp
+          </Link>
+          をご参照ください。
         </div>
-      )}
+      </div>
 
-      {!isLoading && !error && setting && (
-        <>
-          <div className="flex w-full flex-col items-center text-sm">
-            <SettingItem name="LLM モデルタイプ" value={setting.modelType} />
-            <SettingItem name="LLM モデル名" value={setting.modelName} />
-            <SettingItem
-              name="LLM プロンプトテンプレート"
-              value={setting.promptTemplateFile}
-            />
-            <SettingItem
-              name="画像生成 モデル名"
-              value={setting.imageGenModelName}
-            />
-            <SettingItem
-              name="LLM & 画像生成 モデルリージョン"
-              value={setting.modelRegion}
-            />
-            <div className="mt-5 w-2/3 text-xs lg:w-1/2">
-              設定の変更はこの画面ではなく
-              <Link
-                className="text-aws-smile"
-                to="https://docs.aws.amazon.com/ja_jp/cdk/v2/guide/home.html"
-                target="_blank">
-                AWS CDK
-              </Link>
-              で行います。方法については
-              <Link
-                className="text-aws-smile"
-                to="https://github.com/aws-samples/generative-ai-use-cases-jp"
-                target="_blank">
-                generative-ai-use-cases-jp
-              </Link>
-              をご参照ください。
-            </div>
-            {setting.modelType === 'bedrock' && (
-              <div className="mt-5 w-2/3 text-xs lg:w-1/2">
-                ユースケース実行時にエラーになる場合は、必ず
-                <span className="font-bold">{setting.modelRegion}</span> にて
-                <span className="font-bold">{setting.modelName}</span>
-                (LLM) と
-                <span className="font-bold">{setting.imageGenModelName}</span>
-                (画像生成)
-                を有効化しているか確認してください。有効化する方法については
-                <Link
-                  className="text-aws-smile"
-                  to="https://github.com/aws-samples/generative-ai-use-cases-jp"
-                  target="_blank">
-                  generative-ai-use-cases-jp
-                </Link>
-                をご参照ください。
-              </div>
-            )}
-          </div>
-        </>
-      )}
+      <div className="mb-3 mt-8 flex items-center justify-center font-semibold">
+        <PiGithubLogoFill className="mr-2 text-lg" />
+        最近のアップデート
+      </div>
 
-      <div className="mt-10 flex w-full justify-center">
+      <div className="flex flex-col items-center text-sm">
+        <ul className="h-64 w-2/3 overflow-y-scroll border border-gray-400 p-1 lg:w-1/2">
+          {closedPullRequests.map((p: PullRequest, idx: number) => {
+            return (
+              <li key={idx} className="block truncate text-sm">
+                <a href={p.url} className="hover:underline" target="_blank">
+                  {p.mergedAt.toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  })}{' '}
+                  {p.title}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-1 flex w-2/3 justify-end text-xs lg:w-1/2">
+          <a
+            href="https://github.com/aws-samples/generative-ai-use-cases-jp/pulls?q=is%3Apr+is%3Aclosed"
+            className="flex items-center hover:underline"
+            target="_blank">
+            <PiArrowSquareOut className="mr-1 text-base" />
+            全てのアップデートを見る
+          </a>
+        </div>
+      </div>
+
+      <div className="my-10 flex w-full justify-center">
         <Button onClick={signOut} className="text-lg">
           サインアウト
         </Button>

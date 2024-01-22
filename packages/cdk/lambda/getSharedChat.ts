@@ -1,16 +1,29 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { CreateMessagesRequest } from 'generative-ai-use-cases-jp';
-import { batchCreateMessages } from './repository';
+import { findUserIdAndChatId, findChatById, listMessages } from './repository';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const req: CreateMessagesRequest = JSON.parse(event.body!);
-    const userId: string =
-      event.requestContext.authorizer!.claims['cognito:username'];
-    const chatId = event.pathParameters!.chatId!;
-    const messages = await batchCreateMessages(req.messages, userId, chatId);
+    const shareId = event.pathParameters!.shareId!;
+    const res = await findUserIdAndChatId(shareId);
+
+    if (res === null) {
+      return {
+        statusCode: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+        body: '',
+      };
+    }
+
+    const userId = res.userId;
+    const chatId = res.chatId;
+
+    const chat = await findChatById(userId.split('#')[1], chatId.split('#')[1]);
+    const messages = await listMessages(chatId.split('#')[1]);
 
     return {
       statusCode: 200,
@@ -19,6 +32,7 @@ export const handler = async (
         'Access-Control-Allow-Origin': '*',
       },
       body: JSON.stringify({
+        chat,
         messages,
       }),
     };

@@ -1,23 +1,21 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { PredictRequest } from 'generative-ai-use-cases-jp';
-import api from './utils/api';
-import { defaultModel } from './utils/models';
+import { deleteShareId } from './repository';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const req: PredictRequest = JSON.parse(event.body!);
-    const model = req.model || defaultModel;
-    const response = await api[model.type].invoke(model, req.messages);
+    const shareId = event.pathParameters!.shareId!;
+
+    await deleteShareId(shareId);
 
     return {
-      statusCode: 200,
+      statusCode: 204,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
       },
-      body: JSON.stringify(response),
+      body: '',
     };
   } catch (error) {
     console.log(error);

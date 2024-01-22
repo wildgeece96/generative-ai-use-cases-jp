@@ -31,7 +31,7 @@ const KendraSearchPage: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
+      <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min print:visible print:my-5 print:h-min">
         Kendra 検索
       </div>
       <div className="text-sm text-gray-600">
@@ -39,7 +39,7 @@ const KendraSearchPage: React.FC = () => {
           この機能は、Amazon Kendra の標準機能である Query API
           で検索を行います。
           <span className="font-bold">
-            生成系 AI は利用していません。RAG は
+            生成 AI は利用していません。RAG は
             <Link className="text-aws-smile" to="/rag">
               こちら
             </Link>

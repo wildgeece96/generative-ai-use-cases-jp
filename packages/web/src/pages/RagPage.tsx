@@ -10,15 +10,25 @@ import { ReactComponent as BedrockIcon } from '../assets/bedrock.svg';
 import { ReactComponent as KendraIcon } from '../assets/kendra.svg';
 import { PiPlus } from 'react-icons/pi';
 import { RagPageLocationState } from '../@types/navigate';
+import { SelectField } from '@aws-amplify/ui-react';
+import { MODELS } from '../hooks/useModel';
 
 type StateType = {
+  modelId: string;
+  setModelId: (c: string) => void;
   content: string;
   setContent: (c: string) => void;
 };
 
 const useRagPageState = create<StateType>((set) => {
   return {
+    modelId: '',
     content: '',
+    setModelId: (s: string) => {
+      set(() => ({
+        modelId: s,
+      }));
+    },
     setContent: (s: string) => {
       set(() => ({
         content: s,
@@ -28,22 +38,28 @@ const useRagPageState = create<StateType>((set) => {
 });
 
 const RagPage: React.FC = () => {
-  const { content, setContent } = useRagPageState();
+  const { modelId, setModelId, content, setContent } = useRagPageState();
   const { state, pathname } = useLocation() as Location<RagPageLocationState>;
   const { postMessage, clear, loading, messages, isEmpty } = useRag(pathname);
   const { scrollToBottom, scrollToTop } = useScroll();
+  const { modelIds: availableModels, textModels } = MODELS;
 
   useEffect(() => {
     if (state !== null) {
       setContent(state.content);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
+  }, [state, setContent]);
+
+  useEffect(() => {
+    if (!modelId) {
+      setModelId(availableModels[0]);
+    }
+  }, [modelId, availableModels, setModelId]);
 
   const onSend = useCallback(() => {
-    postMessage(content);
+    postMessage(content, textModels.find((m) => m.modelId === modelId)!);
     setContent('');
-  }, [content, postMessage, setContent]);
+  }, [textModels, modelId, content, postMessage, setContent]);
 
   const onReset = useCallback(() => {
     clear();
@@ -62,14 +78,28 @@ const RagPage: React.FC = () => {
   return (
     <>
       <div className={`${!isEmpty ? 'screen:pb-36' : ''} relative`}>
-        <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
+        <div className="invisible my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min print:visible print:my-5 print:h-min">
           RAG チャット
+        </div>
+
+        <div className="mt-2 flex w-full items-end justify-center lg:mt-0">
+          <SelectField
+            label="モデル"
+            labelHidden
+            value={modelId}
+            onChange={(e) => setModelId(e.target.value)}>
+            {availableModels.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </SelectField>
         </div>
 
         {isEmpty && (
           <div className="relative flex h-[calc(100vh-9rem)] flex-col items-center justify-center">
             <div className="flex items-center gap-x-3">
-              <KendraIcon className="h-[64px] w-[64px] fill-gray-400" />
+              <KendraIcon className="size-[64px] fill-gray-400" />
               <PiPlus className="text-2xl text-gray-400" />
               <BedrockIcon className="fill-gray-400" />
             </div>
@@ -77,7 +107,8 @@ const RagPage: React.FC = () => {
         )}
 
         {isEmpty && (
-          <div className="absolute inset-x-0 top-12 m-auto flex justify-center">
+          <div
+            className={`absolute inset-x-0 top-28 m-auto flex justify-center`}>
             <Alert severity="info">
               <div>
                 RAG (Retrieval Augmented Generation)
@@ -110,7 +141,7 @@ const RagPage: React.FC = () => {
           </div>
         ))}
 
-        <div className="fixed bottom-0 z-0 flex w-full items-end justify-center print:hidden lg:pr-64">
+        <div className="fixed bottom-0 z-0 flex w-full items-end justify-center lg:pr-64 print:hidden">
           <InputChatContent
             content={content}
             disabled={loading}

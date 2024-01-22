@@ -7,8 +7,14 @@ import { PiLightbulbFilamentBold, PiWarningFill } from 'react-icons/pi';
 import { BaseProps } from '../@types/common';
 import Button from './Button';
 import useScroll from '../hooks/useScroll';
+import { SelectField } from '@aws-amplify/ui-react';
+import { Model } from 'generative-ai-use-cases-jp';
 
 type Props = BaseProps & {
+  modelId: string;
+  onChangeModel: (s: string) => void;
+  modelIds: string[];
+  textModels: Model[];
   content: string;
   isGeneratingImage: boolean;
   onChangeContent: (s: string) => void;
@@ -22,7 +28,7 @@ type Props = BaseProps & {
 const GenerateImageAssistant: React.FC<Props> = (props) => {
   const { pathname } = useLocation();
   const { loading, messages, postChat, popMessage } = useChat(pathname);
-  const [isAutoGenerationg, setIsAutoGenerationg] = useState(false);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
 
   const { scrollToBottom } = useScroll();
   useEffect(() => {
@@ -104,18 +110,22 @@ const GenerateImageAssistant: React.FC<Props> = (props) => {
       message.content.prompt &&
       message.content.negativePrompt
     ) {
-      setIsAutoGenerationg(true);
+      setIsAutoGenerating(true);
       props
         .onGenerate(message.content.prompt, message.content.negativePrompt)
         .finally(() => {
-          setIsAutoGenerationg(false);
+          setIsAutoGenerating(false);
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
   const onSend = useCallback(() => {
-    postChat(props.content);
+    postChat(
+      props.content,
+      false,
+      props.textModels.find((m) => m.modelId === props.modelId)!
+    );
     props.onChangeContent('');
   }, [postChat, props]);
 
@@ -126,7 +136,7 @@ const GenerateImageAssistant: React.FC<Props> = (props) => {
   }, [popMessage, postChat]);
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative size-full">
       <Card
         label="チャット形式で画像生成"
         help="チャット形式でプロンプトの生成と設定、画像生成を自動で行います。"
@@ -134,6 +144,18 @@ const GenerateImageAssistant: React.FC<Props> = (props) => {
         <div
           id="image-assistant-chat"
           className="h-full overflow-y-auto overflow-x-hidden">
+          <div className="mb-4 flex w-full">
+            <SelectField
+              label="モデル"
+              value={props.modelId}
+              onChange={(e) => props.onChangeModel(e.target.value)}>
+              {props.modelIds.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </SelectField>
+          </div>
           {contents.length === 0 && (
             <div className="m-2 rounded border border-gray-400 bg-gray-100/50 p-2 text-gray-600">
               <div className="flex items-center font-bold">
@@ -196,7 +218,7 @@ const GenerateImageAssistant: React.FC<Props> = (props) => {
                 c.content.prompt === null &&
                 !c.content.error && (
                   <div className="flex items-center gap-2 text-gray-600">
-                    <div className="border-aws-sky h-5 w-5 animate-spin rounded-full border-4 border-t-transparent"></div>
+                    <div className="border-aws-sky size-5 animate-spin rounded-full border-4 border-t-transparent"></div>
                     プロンプト生成中
                   </div>
                 )}
@@ -204,14 +226,14 @@ const GenerateImageAssistant: React.FC<Props> = (props) => {
                 <>
                   {contents.length - 1 === idx &&
                   props.isGeneratingImage &&
-                  isAutoGenerationg ? (
+                  isAutoGenerating ? (
                     <>
                       <div className="flex items-center gap-2 text-gray-600">
-                        <div className="h-5 w-5 rounded-full border-4 border-gray-600"></div>
+                        <div className="size-5 rounded-full border-4 border-gray-600"></div>
                         プロンプト生成完了
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
-                        <div className="border-aws-sky h-5 w-5 animate-spin rounded-full border-4 border-t-transparent"></div>
+                        <div className="border-aws-sky size-5 animate-spin rounded-full border-4 border-t-transparent"></div>
                         画像生成中
                       </div>
                     </>

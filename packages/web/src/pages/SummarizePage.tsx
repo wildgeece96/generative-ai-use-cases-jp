@@ -7,11 +7,16 @@ import Textarea from '../components/Textarea';
 import Markdown from '../components/Markdown';
 import ButtonCopy from '../components/ButtonCopy';
 import useChat from '../hooks/useChat';
+import useTyping from '../hooks/useTyping';
 import { create } from 'zustand';
 import { summarizePrompt } from '../prompts';
 import { SummarizePageLocationState } from '../@types/navigate';
+import { SelectField } from '@aws-amplify/ui-react';
+import { MODELS } from '../hooks/useModel';
 
 type StateType = {
+  modelId: string;
+  setModelId: (c: string) => void;
   sentence: string;
   setSentence: (s: string) => void;
   additionalContext: string;
@@ -23,12 +28,18 @@ type StateType = {
 
 const useSummarizePageState = create<StateType>((set) => {
   const INIT_STATE = {
+    modelId: '',
     sentence: '',
     additionalContext: '',
     summarizedSentence: '',
   };
   return {
     ...INIT_STATE,
+    setModelId: (s: string) => {
+      set(() => ({
+        modelId: s,
+      }));
+    },
     setSentence: (s: string) => {
       set(() => ({
         sentence: s,
@@ -52,6 +63,8 @@ const useSummarizePageState = create<StateType>((set) => {
 
 const SummarizePage: React.FC = () => {
   const {
+    modelId,
+    setModelId,
     sentence,
     setSentence,
     additionalContext,
@@ -63,6 +76,8 @@ const SummarizePage: React.FC = () => {
   const { state, pathname } =
     useLocation() as Location<SummarizePageLocationState>;
   const { loading, messages, postChat, clear: clearChat } = useChat(pathname);
+  const { setTypingTextInput, typingTextOutput } = useTyping(loading);
+  const { modelIds: availableModels, textModels } = MODELS;
 
   const disabledExec = useMemo(() => {
     return sentence === '' || loading;
@@ -73,16 +88,26 @@ const SummarizePage: React.FC = () => {
       setSentence(state.sentence);
       setAdditionalContext(state.additionalContext);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
+  }, [state, setSentence, setAdditionalContext]);
 
-  const getSummary = (sentence: string, context: string) => {
+  useEffect(() => {
+    setTypingTextInput(summarizedSentence);
+  }, [summarizedSentence, setTypingTextInput]);
+
+  useEffect(() => {
+    if (!modelId) {
+      setModelId(availableModels[0]);
+    }
+  }, [modelId, availableModels, setModelId]);
+
+  const getSummary = (modelId: string, sentence: string, context: string) => {
     postChat(
-      summarizePrompt({
+      summarizePrompt.generatePrompt({
         sentence,
         context,
       }),
-      true
+      true,
+      textModels.find((m) => m.modelId === modelId)
     );
   };
 
@@ -101,9 +126,9 @@ const SummarizePage: React.FC = () => {
   // 要約を実行
   const onClickExec = useCallback(() => {
     if (loading) return;
-    getSummary(sentence, additionalContext);
+    getSummary(modelId, sentence, additionalContext);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sentence, additionalContext, loading]);
+  }, [modelId, sentence, additionalContext, loading]);
 
   // リセット
   const onClickClear = useCallback(() => {
@@ -114,11 +139,25 @@ const SummarizePage: React.FC = () => {
 
   return (
     <div className="grid grid-cols-12">
-      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
+      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min print:visible print:my-5 print:h-min">
         要約
       </div>
       <div className="col-span-12 col-start-1 mx-2 lg:col-span-10 lg:col-start-2 xl:col-span-10 xl:col-start-2">
         <Card label="要約したい文章">
+          <div className="mb-4 flex w-full">
+            <SelectField
+              label="モデル"
+              labelHidden
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}>
+              {availableModels.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+
           <Textarea
             placeholder="入力してください"
             value={sentence}
@@ -145,14 +184,14 @@ const SummarizePage: React.FC = () => {
           </div>
 
           <div className="mt-5 rounded border border-black/30 p-1.5">
-            <Markdown>{summarizedSentence}</Markdown>
+            <Markdown>{typingTextOutput}</Markdown>
             {!loading && summarizedSentence === '' && (
               <div className="text-gray-500">
                 要約された文章がここに表示されます
               </div>
             )}
             {loading && (
-              <div className="border-aws-sky h-5 w-5 animate-spin rounded-full border-4 border-t-transparent"></div>
+              <div className="border-aws-sky size-5 animate-spin rounded-full border-4 border-t-transparent"></div>
             )}
             <div className="flex w-full justify-end">
               <ButtonCopy

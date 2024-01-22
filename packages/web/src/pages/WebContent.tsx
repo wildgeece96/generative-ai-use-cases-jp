@@ -10,11 +10,16 @@ import ButtonCopy from '../components/ButtonCopy';
 import Alert from '../components/Alert';
 import useChat from '../hooks/useChat';
 import useChatApi from '../hooks/useChatApi';
+import useTyping from '../hooks/useTyping';
 import { create } from 'zustand';
 import { webContentPrompt } from '../prompts';
 import { WebContentPageLocationState } from '../@types/navigate';
+import { SelectField } from '@aws-amplify/ui-react';
+import { MODELS } from '../hooks/useModel';
 
 type StateType = {
+  modelId: string;
+  setModelId: (c: string) => void;
   url: string;
   setUrl: (s: string) => void;
   fetching: boolean;
@@ -30,6 +35,7 @@ type StateType = {
 
 const useWebContentPageState = create<StateType>((set) => {
   const INIT_STATE = {
+    modelId: '',
     url: '',
     fetching: false,
     text: '',
@@ -38,6 +44,11 @@ const useWebContentPageState = create<StateType>((set) => {
   };
   return {
     ...INIT_STATE,
+    setModelId: (s: string) => {
+      set(() => ({
+        modelId: s,
+      }));
+    },
     setUrl: (s: string) => {
       set(() => ({
         url: s,
@@ -71,6 +82,8 @@ const useWebContentPageState = create<StateType>((set) => {
 
 const WebContent: React.FC = () => {
   const {
+    modelId,
+    setModelId,
     url,
     setUrl,
     fetching,
@@ -87,8 +100,10 @@ const WebContent: React.FC = () => {
   const { state, pathname } =
     useLocation() as Location<WebContentPageLocationState>;
   const { loading, messages, postChat, clear: clearChat } = useChat(pathname);
+  const { setTypingTextInput, typingTextOutput } = useTyping(loading);
   const { getWebText } = useChatApi();
   const [showError, setShowError] = useState(false);
+  const { modelIds: availableModels, textModels } = MODELS;
 
   const disabledExec = useMemo(() => {
     return url === '' || loading || fetching;
@@ -101,17 +116,28 @@ const WebContent: React.FC = () => {
     }
   }, [state, setUrl, setContext]);
 
+  useEffect(() => {
+    setTypingTextInput(content);
+  }, [content, setTypingTextInput]);
+
+  useEffect(() => {
+    if (!modelId) {
+      setModelId(availableModels[0]);
+    }
+  }, [modelId, availableModels, setModelId]);
+
   const getContent = useCallback(
-    (text: string, context: string) => {
+    (modelId: string, text: string, context: string) => {
       postChat(
-        webContentPrompt({
+        webContentPrompt.generatePrompt({
           text,
           context,
         }),
-        true
+        true,
+        textModels.find((m) => m.modelId === modelId)
       );
     },
-    [postChat]
+    [textModels, postChat]
   );
 
   const onClickExec = useCallback(async () => {
@@ -135,8 +161,9 @@ const WebContent: React.FC = () => {
     const text = res!.data.text;
 
     setText(text);
-    getContent(text, context);
+    getContent(modelId, text, context);
   }, [
+    modelId,
     url,
     context,
     loading,
@@ -164,7 +191,7 @@ const WebContent: React.FC = () => {
 
   return (
     <div className="grid grid-cols-12">
-      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold print:visible print:my-5 print:h-min lg:visible lg:my-5 lg:h-min">
+      <div className="invisible col-span-12 my-0 flex h-0 items-center justify-center text-xl font-semibold lg:visible lg:my-5 lg:h-min print:visible print:my-5 print:h-min">
         Web コンテンツ抽出
       </div>
 
@@ -185,6 +212,20 @@ const WebContent: React.FC = () => {
         )}
 
         <Card label="コンテンツを抽出したい Web ページ">
+          <div className="mb-4 flex w-full">
+            <SelectField
+              label="モデル"
+              labelHidden
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}>
+              {availableModels.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+
           <div className="text-xs text-black/50">
             ブログ、記事、ドキュメント等、テキストがメインコンテンツである Web
             ページを指定してください。そうでない場合、正常に出力されないことがあります。
@@ -221,14 +262,14 @@ const WebContent: React.FC = () => {
           </div>
 
           <div className="mt-2 rounded border border-black/30 p-1.5">
-            <Markdown>{content}</Markdown>
+            <Markdown>{typingTextOutput}</Markdown>
             {!loading && content === '' && (
               <div className="text-gray-500">
                 抽出された文章がここに表示されます
               </div>
             )}
             {loading && (
-              <div className="border-aws-sky h-5 w-5 animate-spin rounded-full border-4 border-t-transparent"></div>
+              <div className="border-aws-sky size-5 animate-spin rounded-full border-4 border-t-transparent"></div>
             )}
             <div className="flex w-full justify-end">
               <ButtonCopy

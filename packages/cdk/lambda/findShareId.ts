@@ -1,15 +1,25 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { PredictRequest } from 'generative-ai-use-cases-jp';
-import api from './utils/api';
-import { defaultModel } from './utils/models';
+import { findShareId } from './repository';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const req: PredictRequest = JSON.parse(event.body!);
-    const model = req.model || defaultModel;
-    const response = await api[model.type].invoke(model, req.messages);
+    const userId: string =
+      event.requestContext.authorizer!.claims['cognito:username'];
+    const chatId = event.pathParameters!.chatId!;
+    const res = await findShareId(userId, chatId);
+
+    if (res === null) {
+      return {
+        statusCode: 204,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+        body: '',
+      };
+    }
 
     return {
       statusCode: 200,
@@ -17,7 +27,7 @@ export const handler = async (
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
       },
-      body: JSON.stringify(response),
+      body: JSON.stringify(res),
     };
   } catch (error) {
     console.log(error);

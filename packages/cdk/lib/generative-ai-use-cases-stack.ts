@@ -1,6 +1,16 @@
 import { Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { Auth, Api, Web, Database, Rag, Transcribe } from './construct';
+import {
+  Auth,
+  Api,
+  Web,
+  Database,
+  Rag,
+  Transcribe,
+  CommonWebAcl,
+} from './construct';
+import { CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 
 const errorMessageForBooleanContext = (key: string) => {
   return `${key} の設定でエラーになりました。原因として考えられるものは以下です。
@@ -11,9 +21,15 @@ const errorMessageForBooleanContext = (key: string) => {
 
 interface GenerativeAiUseCasesStackProps extends StackProps {
   webAclId?: string;
+  allowedIpV4AddressRanges: string[] | null;
+  allowedIpV6AddressRanges: string[] | null;
+  allowedCountryCodes: string[] | null;
 }
 
 export class GenerativeAiUseCasesStack extends Stack {
+  public readonly userPool: cognito.UserPool;
+  public readonly userPoolClient: cognito.UserPoolClient;
+
   constructor(
     scope: Construct,
     id: string,
@@ -48,6 +64,27 @@ export class GenerativeAiUseCasesStack extends Stack {
       table: database.table,
     });
 
+    if (
+      props.allowedIpV4AddressRanges ||
+      props.allowedIpV6AddressRanges ||
+      props.allowedCountryCodes
+    ) {
+      const regionalWaf = new CommonWebAcl(this, 'RegionalWaf', {
+        scope: 'REGIONAL',
+        allowedIpV4AddressRanges: props.allowedIpV4AddressRanges,
+        allowedIpV6AddressRanges: props.allowedIpV6AddressRanges,
+        allowedCountryCodes: props.allowedCountryCodes,
+      });
+      new CfnWebACLAssociation(this, 'ApiWafAssociation', {
+        resourceArn: api.api.deploymentStage.stageArn,
+        webAclArn: regionalWaf.webAclArn,
+      });
+      new CfnWebACLAssociation(this, 'UserPoolWafAssociation', {
+        resourceArn: auth.userPool.userPoolArn,
+        webAclArn: regionalWaf.webAclArn,
+      });
+    }
+
     const web = new Web(this, 'Api', {
       apiEndpointUrl: api.api.url,
       userPoolId: auth.userPool.userPoolId,
@@ -57,6 +94,10 @@ export class GenerativeAiUseCasesStack extends Stack {
       ragEnabled,
       selfSignUpEnabled,
       webAclId: props.webAclId,
+      modelRegion: api.modelRegion,
+      modelIds: api.modelIds,
+      imageGenerationModelIds: api.imageGenerationModelIds,
+      endpointNames: api.endpointNames,
     });
 
     if (ragEnabled) {
@@ -103,5 +144,24 @@ export class GenerativeAiUseCasesStack extends Stack {
     new CfnOutput(this, 'SelfSignUpEnabled', {
       value: selfSignUpEnabled.toString(),
     });
+
+    new CfnOutput(this, 'ModelRegion', {
+      value: api.modelRegion,
+    });
+
+    new CfnOutput(this, 'ModelIds', {
+      value: JSON.stringify(api.modelIds),
+    });
+
+    new CfnOutput(this, 'ImageGenerateModelIds', {
+      value: JSON.stringify(api.imageGenerationModelIds),
+    });
+
+    new CfnOutput(this, 'EndpointNames', {
+      value: JSON.stringify(api.endpointNames),
+    });
+
+    this.userPool = auth.userPool;
+    this.userPoolClient = auth.client;
   }
 }
