@@ -80,17 +80,25 @@ export type RetrieveKendraRequest = {
 
 export type RetrieveKendraResponse = RetrieveCommandOutput;
 
+export type GetDocDownloadSignedUrlRequest = {
+  bucketName: string;
+  filePrefix: string;
+  contentType?: string;
+};
+
+export type GetDocDownloadSignedUrlResponse = string;
+
 export type GenerateImageRequest = {
   model?: Model;
   params: GenerateImageParams;
 };
 export type GenerateImageResponse = string;
 
-export type GetSignedUrlRequest = {
+export type GetMediaUploadSignedUrlRequest = {
   mediaFormat: MediaFormat;
 };
 
-export type GetSignedUrlResponse = string;
+export type GetMediaUploadSignedUrlResponse = string;
 
 export type StartTranscriptionRequest = {
   audioUrl: string;
@@ -119,7 +127,7 @@ export type WebTextResponse = {
 
 export type CreateShareIdResponse = {
   shareId: ShareId;
-  userIdAndChatId: userIdAndChatId;
+  userIdAndChatId: UserIdAndChatId;
 };
 
 export type FindShareIdResponse = ShareId;
@@ -127,4 +135,22 @@ export type FindShareIdResponse = ShareId;
 export type GetSharedChatResponse = {
   chat: Chat;
   messages: RecordedMessage[];
+};
+
+export type GetFileUploadSignedUrlRequest = {
+  mediaFormat: string;
+};
+
+export type GetFileUploadSignedUrlResponse = string;
+
+export type UploadFileRequest = {
+  file: File;
+};
+
+export type RecognizeFileRequest = {
+  fileUrl: string;
+};
+
+export type RecognizeFileResponse = {
+  text: string;
 };

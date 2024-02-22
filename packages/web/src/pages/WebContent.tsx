@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Location, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import RowItem from '../components/RowItem';
@@ -8,14 +8,15 @@ import Textarea from '../components/Textarea';
 import Markdown from '../components/Markdown';
 import ButtonCopy from '../components/ButtonCopy';
 import Alert from '../components/Alert';
+import Select from '../components/Select';
 import useChat from '../hooks/useChat';
 import useChatApi from '../hooks/useChatApi';
 import useTyping from '../hooks/useTyping';
 import { create } from 'zustand';
 import { webContentPrompt } from '../prompts';
-import { WebContentPageLocationState } from '../@types/navigate';
-import { SelectField } from '@aws-amplify/ui-react';
+import { WebContentPageQueryParams } from '../@types/navigate';
 import { MODELS } from '../hooks/useModel';
+import queryString from 'query-string';
 
 type StateType = {
   modelId: string;
@@ -97,8 +98,7 @@ const WebContent: React.FC = () => {
     clear,
   } = useWebContentPageState();
 
-  const { state, pathname } =
-    useLocation() as Location<WebContentPageLocationState>;
+  const { pathname, search } = useLocation();
   const { loading, messages, postChat, clear: clearChat } = useChat(pathname);
   const { setTypingTextInput, typingTextOutput } = useTyping(loading);
   const { getWebText } = useChatApi();
@@ -110,21 +110,24 @@ const WebContent: React.FC = () => {
   }, [url, loading, fetching]);
 
   useEffect(() => {
-    if (state !== null) {
-      setUrl(state.url);
-      setContext(state.context);
+    const _modelId = !modelId ? availableModels[0] : modelId;
+    if (search !== '') {
+      const params = queryString.parse(search) as WebContentPageQueryParams;
+      setUrl(params.url ?? '');
+      setContext(params.context ?? '');
+      setModelId(
+        availableModels.includes(params.modelId ?? '')
+          ? params.modelId!
+          : _modelId
+      );
+    } else {
+      setModelId(_modelId);
     }
-  }, [state, setUrl, setContext]);
+  }, [setUrl, setContext, modelId, availableModels, search, setModelId]);
 
   useEffect(() => {
     setTypingTextInput(content);
   }, [content, setTypingTextInput]);
-
-  useEffect(() => {
-    if (!modelId) {
-      setModelId(availableModels[0]);
-    }
-  }, [modelId, availableModels, setModelId]);
 
   const getContent = useCallback(
     (modelId: string, text: string, context: string) => {
@@ -212,18 +215,14 @@ const WebContent: React.FC = () => {
         )}
 
         <Card label="コンテンツを抽出したい Web ページ">
-          <div className="mb-4 flex w-full">
-            <SelectField
-              label="モデル"
-              labelHidden
+          <div className="mb-2 flex w-full">
+            <Select
               value={modelId}
-              onChange={(e) => setModelId(e.target.value)}>
-              {availableModels.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </SelectField>
+              onChange={setModelId}
+              options={availableModels.map((m) => {
+                return { value: m, label: m };
+              })}
+            />
           </div>
 
           <div className="text-xs text-black/50">

@@ -44,10 +44,10 @@ export class Transcribe extends Construct {
 
     const getSignedUrlFunction = new NodejsFunction(this, 'GetSignedUrl', {
       runtime: Runtime.NODEJS_18_X,
-      entry: './lambda/getSignedUrl.ts',
+      entry: './lambda/getMediaUploadSignedUrl.ts',
       timeout: Duration.minutes(15),
       environment: {
-        AUDIO_BUCKET_NAME: audioBucket.bucketName,
+        BUCKET_NAME: audioBucket.bucketName,
       },
     });
     audioBucket.grantWrite(getSignedUrlFunction);

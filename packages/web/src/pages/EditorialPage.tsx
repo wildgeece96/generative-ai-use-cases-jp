@@ -1,18 +1,20 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { Location, useLocation } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Textarea from '../components/Textarea';
 import ExpandableField from '../components/ExpandableField';
+import Switch from '../components/Switch';
+import Select from '../components/Select';
 import useChat from '../hooks/useChat';
 import { create } from 'zustand';
 import Texteditor from '../components/TextEditor';
 import { DocumentComment } from 'generative-ai-use-cases-jp';
 import debounce from 'lodash.debounce';
 import { editorialPrompt } from '../prompts';
-import { EditorialPageLocationState } from '../@types/navigate';
-import { SelectField } from '@aws-amplify/ui-react';
+import { EditorialPageQueryParams } from '../@types/navigate';
 import { MODELS } from '../hooks/useModel';
+import queryString from 'query-string';
 
 const REGEX_BRACKET = /\{(?:[^{}])*\}/g;
 const REGEX_ZENKAKU =
@@ -88,10 +90,11 @@ const EditorialPage: React.FC = () => {
     clear,
   } = useEditorialPageState();
 
-  const { state } = useLocation() as Location<EditorialPageLocationState>;
+  const { search } = useLocation();
   const { pathname } = useLocation();
   const { loading, messages, postChat, clear: clearChat } = useChat(pathname);
   const { modelIds: availableModels, textModels } = MODELS;
+  const [auto, setAuto] = useState(true);
 
   // Memo 変数
   const filterComment = (
@@ -114,42 +117,47 @@ const EditorialPage: React.FC = () => {
   }, [sentence, loading]);
 
   useEffect(() => {
-    if (state !== null) {
-      setSentence(state.sentence);
+    const _modelId = !modelId ? availableModels[0] : modelId;
+    if (search !== '') {
+      const params = queryString.parse(search) as EditorialPageQueryParams;
+      setSentence(params.sentence ?? '');
+      setModelId(
+        availableModels.includes(params.modelId ?? '')
+          ? params.modelId!
+          : _modelId
+      );
+    } else {
+      setModelId(_modelId);
     }
-  }, [state, setSentence]);
-
-  useEffect(() => {
-    if (!modelId) {
-      setModelId(availableModels[0]);
-    }
-  }, [modelId, availableModels, setModelId]);
+  }, [setSentence, modelId, availableModels, search, setModelId]);
 
   // 文章の更新時にコメントを更新
   useEffect(() => {
-    // Claude だと全角を半角に変換して出力するため入力を先に正規化
-    if (sentence !== '') {
-      setSentence(
-        sentence
-          .replace(REGEX_ZENKAKU, (s) => {
-            return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
-          })
-          .replace(/[‐－―]/g, '-') // ハイフンなど
-          .replace(/[～〜]/g, '~') // チルダ
-          // eslint-disable-next-line no-irregular-whitespace
-          .replace(/　/g, ' ') // スペース
+    if (auto) {
+      // Claude だと全角を半角に変換して出力するため入力を先に正規化
+      if (sentence !== '') {
+        setSentence(
+          sentence
+            .replace(REGEX_ZENKAKU, (s) => {
+              return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
+            })
+            .replace(/[‐－―]/g, '-') // ハイフンなど
+            .replace(/[～〜]/g, '~') // チルダ
+            // eslint-disable-next-line no-irregular-whitespace
+            .replace(/　/g, ' ') // スペース
+        );
+      }
+
+      // debounce した後コメント更新
+      onSentenceChange(
+        modelId,
+        sentence,
+        additionalContext,
+        comments,
+        commentState,
+        loading
       );
     }
-
-    // debounce した後コメント更新
-    onSentenceChange(
-      modelId,
-      sentence,
-      additionalContext,
-      comments,
-      commentState,
-      loading
-    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelId, sentence]);
 
@@ -255,18 +263,15 @@ const EditorialPage: React.FC = () => {
       </div>
       <div className="col-span-12 col-start-1 mx-2 lg:col-span-10 lg:col-start-2 xl:col-span-10 xl:col-start-2">
         <Card label="校正したい文章">
-          <div className="mb-4 flex w-full">
-            <SelectField
-              label="モデル"
-              labelHidden
+          <div className="mb-2 flex w-full items-center justify-between">
+            <Select
               value={modelId}
-              onChange={(e) => setModelId(e.target.value)}>
-              {availableModels.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </SelectField>
+              onChange={setModelId}
+              options={availableModels.map((m) => {
+                return { value: m, label: m };
+              })}
+            />
+            <Switch label="自動校正" checked={auto} onSwitch={setAuto} />
           </div>
           <Texteditor
             placeholder="入力してください"

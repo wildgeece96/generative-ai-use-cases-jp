@@ -3,15 +3,16 @@ import InputChatContent from '../components/InputChatContent';
 import { create } from 'zustand';
 import Alert from '../components/Alert';
 import useRag from '../hooks/useRag';
-import { useLocation, Link, Location } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import ChatMessage from '../components/ChatMessage';
+import Select from '../components/Select';
 import useScroll from '../hooks/useScroll';
 import { ReactComponent as BedrockIcon } from '../assets/bedrock.svg';
 import { ReactComponent as KendraIcon } from '../assets/kendra.svg';
 import { PiPlus } from 'react-icons/pi';
-import { RagPageLocationState } from '../@types/navigate';
-import { SelectField } from '@aws-amplify/ui-react';
+import { RagPageQueryParams } from '../@types/navigate';
 import { MODELS } from '../hooks/useModel';
+import queryString from 'query-string';
 
 type StateType = {
   modelId: string;
@@ -39,22 +40,25 @@ const useRagPageState = create<StateType>((set) => {
 
 const RagPage: React.FC = () => {
   const { modelId, setModelId, content, setContent } = useRagPageState();
-  const { state, pathname } = useLocation() as Location<RagPageLocationState>;
+  const { pathname, search } = useLocation();
   const { postMessage, clear, loading, messages, isEmpty } = useRag(pathname);
   const { scrollToBottom, scrollToTop } = useScroll();
   const { modelIds: availableModels, textModels } = MODELS;
 
   useEffect(() => {
-    if (state !== null) {
-      setContent(state.content);
+    const _modelId = !modelId ? availableModels[0] : modelId;
+    if (search !== '') {
+      const params = queryString.parse(search) as RagPageQueryParams;
+      setContent(params.content ?? '');
+      setModelId(
+        availableModels.includes(params.modelId ?? '')
+          ? params.modelId!
+          : _modelId
+      );
+    } else {
+      setModelId(_modelId);
     }
-  }, [state, setContent]);
-
-  useEffect(() => {
-    if (!modelId) {
-      setModelId(availableModels[0]);
-    }
-  }, [modelId, availableModels, setModelId]);
+  }, [availableModels, modelId, search, setContent, setModelId]);
 
   const onSend = useCallback(() => {
     postMessage(content, textModels.find((m) => m.modelId === modelId)!);
@@ -83,17 +87,13 @@ const RagPage: React.FC = () => {
         </div>
 
         <div className="mt-2 flex w-full items-end justify-center lg:mt-0">
-          <SelectField
-            label="モデル"
-            labelHidden
+          <Select
             value={modelId}
-            onChange={(e) => setModelId(e.target.value)}>
-            {availableModels.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </SelectField>
+            onChange={setModelId}
+            options={availableModels.map((m) => {
+              return { value: m, label: m };
+            })}
+          />
         </div>
 
         {isEmpty && (
