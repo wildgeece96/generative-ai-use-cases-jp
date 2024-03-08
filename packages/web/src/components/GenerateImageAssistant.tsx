@@ -8,13 +8,11 @@ import { PiLightbulbFilamentBold, PiWarningFill } from 'react-icons/pi';
 import { BaseProps } from '../@types/common';
 import Button from './Button';
 import useScroll from '../hooks/useScroll';
-import { Model } from 'generative-ai-use-cases-jp';
 
 type Props = BaseProps & {
   modelId: string;
   onChangeModel: (s: string) => void;
   modelIds: string[];
-  textModels: Model[];
   content: string;
   isGeneratingImage: boolean;
   onChangeContent: (s: string) => void;
@@ -121,11 +119,7 @@ const GenerateImageAssistant: React.FC<Props> = (props) => {
   }, [loading]);
 
   const onSend = useCallback(() => {
-    postChat(
-      props.content,
-      false,
-      props.textModels.find((m) => m.modelId === props.modelId)!
-    );
+    postChat(props.content);
     props.onChangeContent('');
   }, [postChat, props]);
 
@@ -152,7 +146,7 @@ const GenerateImageAssistant: React.FC<Props> = (props) => {
         </div>
         <div
           id="image-assistant-chat"
-          className="h-full overflow-y-auto overflow-x-hidden">
+          className="h-full overflow-y-auto overflow-x-hidden pb-16">
           {contents.length === 0 && (
             <div className="rounded border border-gray-400 bg-gray-100/50 p-2 text-gray-600">
               <div className="flex items-center font-bold">
@@ -279,7 +273,7 @@ const GenerateImageAssistant: React.FC<Props> = (props) => {
         </div>
         <div className="absolute bottom-0 z-0 -ml-2 flex w-full items-end justify-center pr-6">
           <InputChatContent
-            placeholder="出力したい画像の概要を入力してください"
+            placeholder="出力したい画像の概要を入力"
             fullWidth
             hideReset
             content={props.content}

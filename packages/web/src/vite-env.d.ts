@@ -13,8 +13,12 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION: string;
   readonly VITE_APP_MODEL_REGION: string;
   readonly VITE_APP_MODEL_IDS: string;
+  readonly VITE_APP_MULTI_MODAL_MODEL_IDS: string;
   readonly VITE_APP_IMAGE_MODEL_IDS: string;
   readonly VITE_APP_ENDPOINT_NAMES: string;
+  readonly VITE_APP_SAMLAUTH_ENABLED: string;
+  readonly VITE_APP_SAML_COGNITO_DOMAIN_NAME: string;
+  readonly VITE_APP_SAML_COGNITO_FEDERATED_IDENTITY_PROVIDER_NAME: string;
   readonly VITE_APP_AGENT_NAMES: string;
   readonly VITE_APP_RECOGNIZE_FILE_ENABLED: string;
 }
