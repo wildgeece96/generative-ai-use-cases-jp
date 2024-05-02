@@ -1,7 +1,7 @@
 {
   "name": "generative-ai-use-cases-jp",
   "private": true,
-  "version": "0.0.5",
+  "version": "0.0.6",
   "scripts": {
     "lint": "run-s root:lint web:lint cdk:lint",
     "root:lint": "npx prettier --write .",
@@ -11,14 +11,21 @@
     "web:lint": "npm -w packages/web run lint",
     "cdk:deploy": "npm -w packages/cdk run cdk deploy -- --all",
     "cdk:destroy": "npm -w packages/cdk run cdk destroy",
-    "cdk:lint": "npm -w packages/cdk run lint"
+    "cdk:lint": "npm -w packages/cdk run lint",
+    "extension:ci": "cd browser-extension && npm ci",
+    "extension:dev": "cd browser-extension && npm run dev",
+    "extension:devw": "source ./setup-env.sh && cd browser-extension && npm run dev",
+    "extension:build": "cd browser-extension && npm run build",
+    "extension:buildw": "source ./setup-env.sh && cd browser-extension && npm run build",
+    "extension:lint": "npx prettier --write browser-extension/. && cd browser-extension && npm run lint"
   },
   "devDependencies": {
-    "@tailwindcss/forms": "^0.5.4",
+    "@tailwindcss/forms": "^0.5.7",
     "npm-run-all": "^4.1.5",
-    "prettier": "^3.0.0",
-    "prettier-plugin-tailwindcss": "^0.4.1",
-    "tailwind-scrollbar": "^3.0.5"
+    "prettier": "^3.2.5",
+    "prettier-plugin-tailwindcss": "^0.5.13",
+    "tailwind-scrollbar": "^3.1.0",
+    "vite-plugin-pwa": "^0.19.8"
   },
   "workspaces": [
     "packages/*"

@@ -12,7 +12,7 @@ import {
   PiBookOpen,
   PiMagnifyingGlass,
 } from 'react-icons/pi';
-import { ReactComponent as BedrockIcon } from '../assets/bedrock.svg';
+import BedrockIcon from '../assets/bedrock.svg?react';
 import ExpandableMenu from './ExpandableMenu';
 import ChatList from './ChatList';
 
@@ -125,7 +125,7 @@ const Drawer: React.FC<Props> = (props) => {
       <nav
         className={`bg-aws-squid-ink flex h-screen w-64 flex-col justify-between text-sm text-white  print:hidden`}>
         <div className="text-aws-smile mx-3 my-2 text-xs">
-          ユースケース <span className="text-gray-400">(生成AI)</span>
+          ユースケース <span className="text-gray-400">(生成 AI)</span>
         </div>
         <div className="scrollbar-thin scrollbar-thumb-white ml-2 mr-1 h-full overflow-y-auto">
           {usecases.map((item, idx) => (
@@ -143,7 +143,7 @@ const Drawer: React.FC<Props> = (props) => {
           <>
             <ExpandableMenu
               title="ツール"
-              subTitle="(AIサービス)"
+              subTitle="(AI サービス)"
               className="mx-3 my-2 text-xs">
               <div className="mb-2 ml-2 mr-1">
                 {tools.map((item, idx) => (

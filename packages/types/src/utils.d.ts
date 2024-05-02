@@ -7,15 +7,13 @@ import {
 export type InvokeInterface = (
   model: Model,
   messages: UnrecordedMessage[],
-  extraSuffix: string | undefined,
-  stopSequences: string[] | undefined
+  id: string
 ) => Promise<string>;
 
 export type InvokeStreamInterface = (
   model: Model,
   messages: UnrecordedMessage[],
-  extraSuffix: string | undefined,
-  stopSequences: string[] | undefined
+  id: string
 ) => AsyncIterable<string>;
 
 // Base64 にエンコードした画像を Return する

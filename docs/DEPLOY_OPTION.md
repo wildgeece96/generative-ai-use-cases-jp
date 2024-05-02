@@ -2,7 +2,7 @@
 
 ## 設定方法
 
-このアプリケーションは、AWS CDK の context で設定を変更します。
+GenU は、AWS CDK の context で設定を変更します。
 
 **CDK の context は '-c' でも指定できますが、その場合コードベースに変更が入らずフロントエンドのビルドが実施されないため、このアセットに関しては全ての設定は cdk.json の設定を変更することを推奨します。**
 
@@ -81,8 +81,6 @@ Agent チャットユースケースでは Agent for Amazon Bedrock を利用し
 
 API と連携し最新情報を参照して回答する Agent を作成します。Agent のカスタマイズを行い他のアクションを追加できるほか、複数の Agent を作成し切り替えることが可能です。
 
-検索エージェント をデプロイする際は、最初に Agent で使用する Lambda のデプロイと手動で Agent を作成した後に作成した Agent を登録するため2回のデプロイが必要です。
-
 デフォルトで使用できる検索エージェントでは、無料利用枠の大きさ・リクエスト数の制限・コストの観点から [Brave Search API の Data for AI](https://brave.com/search/api/) を使用していますが、他の API にカスタマイズすることも可能です。API キーの取得はフリープランでもクレジットカードの登録が必要になります。
 
 > [!NOTE]
@@ -102,15 +100,9 @@ context の `agentEnabled` と `searchAgentEnabled` に `true` を指定し(デ�
 }
 ```
 
-変更後に `npm run cdk:deploy` で再度デプロイして反映させます。これにより、Bedrock が参照する Lambda 関数 と OpenAPI Schema が `agentRegion` にデプロイされます。
+変更後に `npm run cdk:deploy` で再度デプロイして反映させます。これにより、デフォルトの検索エンジン Agent がデプロイされます。
 
-続いて、 [Agent の AWS コンソール画面](https://console.aws.amazon.com/bedrock/home?#/agents) から手動で Agent を作成します。設定は基本的にデフォルトのままで、Agent のプロンプトは以下の例を参考にプロンプトを入力します。モデルはレスポンスが早いため `anthropic.claude-instant-v1` を推奨します。アクショングループ名はモデルに入力されるためわかりやすい名前（例：`Search`）にし、アクショングループの設定には、デプロイした際の出力の Cfn Output から Lambda 関数（`AgentLambdaFunctionName`）と S3 にアップロードされた Schema ファイル（`AgentSchemaURI`）を指定します。（複数スタックに分かれているため上にスクロールする必要があります）ナレッジベースは必要ないため設定不要です。
-
-```
-プロンプト例: あなたは指示に応えるアシスタントです。 指示に応えるために必要な情報が十分な場合はすぐに回答し、不十分な場合は検索を行い必要な情報を入手し回答してください。複数回検索することが可能です。
-```
-
-作成された Agent から Alias を作成し、`agentId` と `aliasId` をコピーし以下の形式で context 追加します。`displayName` は UI に表示したい名称を設定してください。`npm run cdk:deploy` で再度デプロイして反映させます。
+デフォルトの Agent 以外に手動で作成した Agent を登録したい場合、以下のように追加の Agent を `agents` に追加してください。
 
 **[packages/cdk/cdk.json](/packages/cdk/cdk.json) を編集**
 ```
@@ -126,6 +118,8 @@ context の `agentEnabled` と `searchAgentEnabled` に `true` を指定し(デ�
   }
 }
 ```
+
+また、`packages/cdk/lib/construct/agent.ts` を改修し新たな Agent を定義することも可能です。
 
 #### Knowledge base エージェントのデプロイ
 
@@ -159,20 +153,61 @@ Knowledge base プロンプト例: キーワードで検索し情報を取得し
 }
 ```
 
-## Amazon Bedrock のモデルを変更する
+### 映像分析ユースケースの有効化
 
-`cdk.json` の `modelRegion`, `modelIds`, `imageGenerationModelIds` でモデルとモデルのリージョンを指定します。`modelIds` と `imageGenerationModelIds` は指定したリージョンで利用できるモデルの中から利用したいモデルのリストで指定してください。モデルの一覧は[ドキュメント](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids-arns.html) をご確認ください。
+映像分析ユースケースでは、映像の画像フレームとテキストを入力して画像の内容を LLM に分析させます。
+映像分析ユースケースを直接有効化するオプションはありませんが、`cdk.json` でマルチモーダルのモデルが有効化されている必要があります。
 
-現状このソリューションが対応しているモデルは以下です
+2024/05 現在、マルチモーダルのモデルは以下です。
 
 ```
+"anthropic.claude-3-opus-20240229-v1:0",
 "anthropic.claude-3-sonnet-20240229-v1:0",
+"anthropic.claude-3-haiku-20240307-v1:0",
+```
+
+これらのいずれかが `cdk.json` の `modelIds` に定義されている必要があります。
+
+```json
+  "modelIds": [
+    "anthropic.claude-3-opus-20240229-v1:0",
+    "anthropic.claude-3-haiku-20240307-v1:0",
+    "anthropic.claude-3-sonnet-20240229-v1:0"
+  ]
+```
+
+> 2024/05 時点での情報: 上記の通り Claude 3 を利用する必要があるため、modelRegion が ap-northeast-1 の場合は映像分析ユースケースを利用できません。Claude 3 が利用可能なリージョン (us-east-1 や us-west-2 など) をご利用ください。
+
+## Amazon Bedrock のモデルを変更する
+
+`cdk.json` の `modelRegion`, `modelIds`, `imageGenerationModelIds` でモデルとモデルのリージョンを指定します。`modelIds` と `imageGenerationModelIds` は指定したリージョンで利用できるモデルの中から利用したいモデルのリストで指定してください。AWS ドキュメントに、[モデルの一覧](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html)と[リージョン別のモデルサポート一覧](https://docs.aws.amazon.com/bedrock/latest/userguide/models-regions.html)があります。
+
+このソリューションが対応しているテキスト生成モデルは以下です。
+
+```
+"anthropic.claude-3-opus-20240229-v1:0",
+"anthropic.claude-3-sonnet-20240229-v1:0",
+"anthropic.claude-3-haiku-20240307-v1:0",
+"meta.llama3-70b-instruct-v1:0",
+"meta.llama3-8b-instruct-v1:0",
+"cohere.command-r-plus-v1:0",
+"cohere.command-r-v1:0",
+"mistral.mistral-large-2402-v1:0",
+"anthropic.claude-v2:1",
 "anthropic.claude-v2",
 "anthropic.claude-instant-v1",
-"meta.llama2-13b-chat-v1",
 "meta.llama2-70b-chat-v1",
-"mistral.mistral-7b-instruct-v0:2",
+"meta.llama2-13b-chat-v1",
 "mistral.mixtral-8x7b-instruct-v0:1",
+"mistral.mistral-7b-instruct-v0:2",
+```
+
+
+このソリューションが対応している画像生成モデルは以下です。
+
+```
+"amazon.titan-image-generator-v1",
+"stability.stable-diffusion-xl-v1",
 ```
 
 **指定したリージョンで指定したモデルが有効化されているかご確認ください。**
@@ -183,12 +218,16 @@ Knowledge base プロンプト例: キーワードで検索し情報を取得し
   "modelRegion": "us-east-1",
   "modelIds": [
     "anthropic.claude-3-sonnet-20240229-v1:0",
-    "anthropic.claude-v2",
-    "anthropic.claude-instant-v1",
+    "anthropic.claude-3-haiku-20240307-v1:0",
+    "meta.llama3-70b-instruct-v1:0",
+    "meta.llama3-8b-instruct-v1:0",
+    "cohere.command-r-plus-v1:0",
+    "cohere.command-r-v1:0",
+    "mistral.mistral-large-2402-v1:0"
   ],
   "imageGenerationModelIds": [
-    "stability.stable-diffusion-xl-v1",
-    "amazon.titan-image-generator-v1"
+    "amazon.titan-image-generator-v1",
+    "stability.stable-diffusion-xl-v1"
   ],
 ```
 
@@ -196,7 +235,10 @@ Knowledge base プロンプト例: キーワードで検索し情報を取得し
 
 ```bash
   "modelRegion": "ap-northeast-1",
-  "modelIds": ["anthropic.claude-instant-v1"],
+  "modelIds": [
+    "anthropic.claude-v2:1",
+    "anthropic.claude-instant-v1"
+  ],
   "imageGenerationModelIds": [],
 ```
 
@@ -255,7 +297,7 @@ context の allowedSignUpEmailDomains に 許可するドメインのリスト�
 
 値はstringのlist形式で指定し、各stringには"@"を含めないでください。メールアドレスのドメインが、許可ドメインのいずれか同じであればサインアップできます。`null` を指定すると何も制限されず、すべてのドメインを許可します。`[]` を指定するとすべて禁止し、どのドメインのメールアドレスでも登録できません。
 
-設定すると、許可ドメインでないユーザは、Webのサインアップ画面で「アカウントを作る」を実行したときにエラーになり、サービスに進むことができなくなります。また、AWSマネジメントコンソールで、Cognitoのページで「ユーザを作成」を実行したときにエラーになります。
+設定すると、許可ドメインでないユーザは、Webのサインアップ画面で「アカウントを作る」を実行したときにエラーになり、GenU へのサインアップができなくなります。また、AWSマネジメントコンソールで、Cognitoのサービス画面から「ユーザを作成」を実行したときにエラーになります。
 
 既にCognitoに作成されているユーザには影響ありません。新規にサインアップ・作成しようとしているユーザのみに適用されます。
 
@@ -288,7 +330,7 @@ context の allowedSignUpEmailDomains に 許可するドメインのリスト�
 
 #### IP アドレスによる制限
 
-Web ページへのアクセスを IP で制限したい場合、AWS WAF による IP 制限を有効化することができます。[packages/cdk/cdk.json](/packages/cdk/cdk.json) の `allowedIpV4AddressRanges` では許可する IPv4 の CIDR を配列で指定することができ、`allowedIpV6AddressRanges` では許可する IPv6 の CIDR を配列で指定することができます。
+Web アプリへのアクセスを IP で制限したい場合、AWS WAF による IP 制限を有効化することができます。[packages/cdk/cdk.json](/packages/cdk/cdk.json) の `allowedIpV4AddressRanges` では許可する IPv4 の CIDR を配列で指定することができ、`allowedIpV6AddressRanges` では許可する IPv6 の CIDR を配列で指定することができます。
 
 ```json
   "context": {
@@ -299,7 +341,7 @@ Web ページへのアクセスを IP で制限したい場合、AWS WAF によ�
 
 #### 地理的制限
 
-Web ページへのアクセスをアクセス元の国で制限したい場合、AWS WAF による地理的制限を有効化することができます。[packages/cdk/cdk.json](/packages/cdk/cdk.json) の `allowedCountryCodes` で許可する国を Country Code の配列で指定することができます。
+Web アプリへのアクセスをアクセス元の国で制限したい場合、AWS WAF による地理的制限を有効化することができます。[packages/cdk/cdk.json](/packages/cdk/cdk.json) の `allowedCountryCodes` で許可する国を Country Code の配列で指定することができます。
 指定する国の Country Code は[ISO 3166-2 from wikipedia](https://en.wikipedia.org/wiki/ISO_3166-2)をご参照ください。
 ```json
   "context": {
@@ -314,8 +356,9 @@ npx -w packages/cdk cdk bootstrap --region us-east-1
 
 ### SAML 認証
 
-Microsoft Entra ID (旧 Azure Active Directory) などの IdP が提供する SAML 認証機能と連携ができます。  
-[こちらに Microsoft Entra ID と SAML 設定を行う参考手順](SAML_WITH_ENTRA_ID.md) があります。Microsoft Entra ID の設定を含めた詳細な手順があるので、こちらもご活用ください。
+Google Workspace や Microsoft Entra ID (旧 Azure Active Directory) などの IdP が提供する SAML 認証機能と連携ができます。次に詳細な連携手順があります。こちらもご活用ください。  
+- [Google Workspace と SAML 連携](SAML_WITH_GOOGLE_WORKSPACE.md)
+- [Microsoft Entra ID と SAML 連携](SAML_WITH_ENTRA_ID.md)
 
 **[packages/cdk/cdk.json](/packages/cdk/cdk.json) を編集**
 
@@ -331,7 +374,7 @@ Microsoft Entra ID (旧 Azure Active Directory) などの IdP が提供する SA
 ## モニタリング用のダッシュボードの有効化
 
 入力/出力 Token 数や直近のプロンプト集などが集約されたダッシュボードを作成します。
-**ダッシュボードはアプリケーションに組み込まれたものではなく、Amazon CloudWatch のダッシュボードです。**
+**ダッシュボードは GenU に組み込まれたものではなく、Amazon CloudWatch のダッシュボードです。**
 Amazon CloudWatch のダッシュボードは、[マネージメントコンソール](https://console.aws.amazon.com/cloudwatch/home#dashboards)から閲覧できます。
 ダッシュボードを閲覧するには、マネージメントコンソールにログイン可能かつダッシュボードが閲覧可能な権限を持った IAM ユーザーの作成が必要です。
 
@@ -357,12 +400,111 @@ context の `dashboard` に `true` を設定します。(デフォルトは `fal
 PDF や Excel などのファイルをアップロードしてテキストを抽出する、ファイルアップロード機能を利用することができます。対応しているファイルは、csv, doc, docx, md, pdf, ppt, pptx, tsv, xlsx です。
 
 **[packages/cdk/cdk.json](/packages/cdk/cdk.json) を編集**
-```
+```json
 {
   "context": {
-    "recognizeFileEnabled": true
+    "recognizeFileEnabled": true,
+    "vpcId": null
   }
 }
 ```
 
-ファイルアップロード機能は ECS (Fargate) 上で実行されます。そのため、有効化すると VPC が新たに作成されます。また、Fargate 上で動くコンテナのビルドを行うために、デプロイ用のマシンでは Docker がインストールされている必要があり、Docker デーモンが起動している必要があります。
+ファイルアップロード機能は ECS (Fargate) 上で実行されます。`vpcId`を指定しない場合は、VPC が新たに作成されます。また、Fargate 上で動くコンテナのビルドを行うために、デプロイ用のマシンでは Docker がインストールされている必要があり、Docker デーモンが起動している必要があります。
+
+既存の VPC を使用する場合は、`vpcId` を指定してください。
+
+
+```json
+{
+  "context": {
+    "recognizeFileEnabled": true,
+    "vpcId": "vpc-xxxxxxxxxxxxxxxxx"
+  }
+}
+```
+
+## カスタムドメインの使用
+
+Web サイトの URL としてカスタムドメインを使用することができます。同一 AWS アカウントの Route53 にパブリックホストゾーンが作成済みであることが必要です。パブリックホストゾーンについてはこちらをご参照ください: [パブリックホストゾーンの使用 - Amazon Route 53](https://docs.aws.amazon.com/ja_jp/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html)
+
+同一 AWS アカウントにパブリックホストゾーンを持っていない場合は、AWS ACM による SSL 証明書の検証時に手動で DNS レコードを追加する方法や、Eメール検証を行う方法もあります。これらの方法を利用する場合は、CDK のドキュメントを参照してカスタマイズしてください: [aws-cdk-lib.aws_certificatemanager module · AWS CDK](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_certificatemanager-readme.html)
+
+cdk.json には以下の値を設定します。
+
+- `hostName` ... Web サイトのホスト名です。A レコードは CDK によって作成されます。事前に作成する必要はありません
+- `domainName` ... 事前に作成したパブリックホストゾーンのドメイン名です
+- `hostedZoneId` ... 事前に作成したパブリックホストゾーンのIDです
+
+**[packages/cdk/cdk.json](/packages/cdk/cdk.json) を編集**
+
+```json
+{
+  "context": {
+    "hostName": "genai",
+    "domainName": "example.com",
+    "hostedZoneId": "XXXXXXXXXXXXXXXXXXXX"
+  }
+}
+```
+
+## 別 AWS アカウントの Bedrock を利用したい場合
+
+別 AWS アカウントの Bedrock を利用することができます。前提条件として、GenU の初回デプロイは完了済みとします。
+
+別 AWS アカウントの Bedrock を利用するためには、別 AWS アカウントに IAM ロールを 1 つ作成する必要があります。作成する IAM ロール名は任意ですが、GenU デプロイ時に作成された以下の名前で始まる IAM ロール名を、別アカウントで作成した IAM ロールの Principal に指定します。
+
+- `GenerativeAiUseCasesStack-APIPredictTitleService`
+- `GenerativeAiUseCasesStack-APIPredictService`
+- `GenerativeAiUseCasesStack-APIPredictStreamService`
+- `GenerativeAiUseCasesStack-APIGenerateImageService`
+
+Principal の指定方法について詳細を確認したい場合はこちらを参照ください: [AWS JSON ポリシーの要素: Principal](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/reference_policies_elements_principal.html)
+
+Principal 設定例 (別アカウントにて設定)
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::111111111111:role/GenerativeAiUseCasesStack-APIPredictTitleServiceXXX-XXXXXXXXXXXX",
+                    "arn:aws:iam::111111111111:role/GenerativeAiUseCasesStack-APIPredictServiceXXXXXXXX-XXXXXXXXXXXX",
+                    "arn:aws:iam::111111111111:role/GenerativeAiUseCasesStack-APIPredictStreamServiceXX-XXXXXXXXXXXX",
+                    "arn:aws:iam::111111111111:role/GenerativeAiUseCasesStack-APIGenerateImageServiceXX-XXXXXXXXXXXX"
+                ]
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {}
+        }
+    ]
+}
+```
+
+cdk.json には以下の値を設定します。
+
+- `crossAccountBedrockRoleArn` ... 別アカウントで事前に作成した IAM ロールの ARN です
+
+**[packages/cdk/cdk.json](/packages/cdk/cdk.json) を編集**
+
+```json
+{
+  "context": {
+    "crossAccountBedrockRoleArn": "arn:aws:iam::アカウントID:role/事前に作成したロール名"
+  }
+}
+```
+
+cdk.json 設定例
+
+```json
+{
+  "context": {
+    "crossAccountBedrockRoleArn": "arn:aws:iam::222222222222:role/YYYYYYYYYYYYYYYYYYYYY"
+  }
+}
+```
+
+設定変更後に `npm run cdk:deploy` を実行して変更内容を反映させます。

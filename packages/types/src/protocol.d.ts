@@ -5,6 +5,7 @@ import {
   UnrecordedMessage,
 } from './message';
 import { Chat } from './chat';
+import { SystemContext } from './systemContext';
 import {
   QueryCommandOutput,
   RetrieveCommandOutput,
@@ -37,6 +38,10 @@ export type ListMessagesResponse = {
   messages: RecordedMessage[];
 };
 
+export type CreateSystemContextRequest = {
+  systemContext: SystemContext;
+};
+
 export type UpdateFeedbackRequest = {
   createdDate: string;
   feedback: string;
@@ -57,6 +62,7 @@ export type UpdateTitleResponse = {
 export type PredictRequest = {
   model?: Model;
   messages: UnrecordedMessage[];
+  id: string;
 };
 
 export type PredictResponse = string;
@@ -65,6 +71,7 @@ export type PredictTitleRequest = {
   model: Model;
   chat: Chat;
   prompt: string;
+  id: string;
 };
 
 export type PredictTitleResponse = string;
@@ -100,6 +107,11 @@ export type GetMediaUploadSignedUrlRequest = {
 };
 
 export type GetMediaUploadSignedUrlResponse = string;
+
+export type DeleteFileRequest = {
+  fileName: string;
+};
+export type DeleteFileResponse = null;
 
 export type StartTranscriptionRequest = {
   audioUrl: string;

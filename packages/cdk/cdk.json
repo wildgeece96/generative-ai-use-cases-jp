@@ -27,7 +27,7 @@
     "samlCognitoFederatedIdentityProviderName": "",
     "modelRegion": "us-east-1",
     "modelIds": [
-      "anthropic.claude-v2"
+      "anthropic.claude-3-sonnet-20240229-v1:0"
     ],
     "imageGenerationModelIds": [
       "stability.stable-diffusion-xl-v1"
@@ -41,9 +41,14 @@
     "allowedIpV4AddressRanges": null,
     "allowedIpV6AddressRanges": null,
     "allowedCountryCodes": null,
+    "hostName": null,
+    "domainName": null,
+    "hostedZoneId": null,
     "dashboard": false,
     "anonymousUsageTracking": true,
     "recognizeFileEnabled": false,
+    "vpcId": null,
+    "crossAccountBedrockRoleArn": "",
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,
     "@aws-cdk/core:target-partitions": [
