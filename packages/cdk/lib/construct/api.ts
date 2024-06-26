@@ -60,6 +60,7 @@ export class Api extends Construct {
 
     // Validate Model Names
     const supportedModelIds = [
+      'anthropic.claude-3-5-sonnet-20240620-v1:0',
       'anthropic.claude-3-opus-20240229-v1:0',
       'anthropic.claude-3-sonnet-20240229-v1:0',
       'anthropic.claude-3-haiku-20240307-v1:0',
@@ -77,11 +78,13 @@ export class Api extends Construct {
       'meta.llama2-70b-chat-v1',
       'mistral.mistral-7b-instruct-v0:2',
       'mistral.mixtral-8x7b-instruct-v0:1',
+      'mistral.mistral-small-2402-v1:0',
       'mistral.mistral-large-2402-v1:0',
       'cohere.command-r-v1:0',
       'cohere.command-r-plus-v1:0',
     ];
     const multiModalModelIds = [
+      'anthropic.claude-3-5-sonnet-20240620-v1:0',
       'anthropic.claude-3-opus-20240229-v1:0',
       'anthropic.claude-3-sonnet-20240229-v1:0',
       'anthropic.claude-3-haiku-20240307-v1:0',
@@ -396,6 +399,20 @@ export class Api extends Construct {
     );
     table.grantWriteData(createSystemContextFunction);
 
+    const updateSystemContextTitleFunction = new NodejsFunction(
+      this,
+      'UpdateSystemContextTitle',
+      {
+        runtime: Runtime.NODEJS_18_X,
+        entry: './lambda/updateSystemContextTitle.ts',
+        timeout: Duration.minutes(15),
+        environment: {
+          TABLE_NAME: table.tableName,
+        },
+      }
+    );
+    table.grantReadWriteData(updateSystemContextTitleFunction);
+
     const deleteSystemContextFunction = new NodejsFunction(
       this,
       'DeleteSystemContexts',
@@ -542,6 +559,16 @@ export class Api extends Construct {
     systemContextResource.addMethod(
       'DELETE',
       new LambdaIntegration(deleteSystemContextFunction),
+      commonAuthorizerProps
+    );
+
+    const systemContextTitleResource =
+      systemContextResource.addResource('title');
+
+    // PUT: /systemcontexts/{systemContextId}/title
+    systemContextTitleResource.addMethod(
+      'PUT',
+      new LambdaIntegration(updateSystemContextTitleFunction),
       commonAuthorizerProps
     );
 
