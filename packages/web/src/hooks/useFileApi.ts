@@ -1,11 +1,9 @@
 import {
   GetFileUploadSignedUrlRequest,
   GetFileUploadSignedUrlResponse,
-  RecognizeFileRequest,
-  RecognizeFileResponse,
   UploadFileRequest,
-  GetDocDownloadSignedUrlRequest,
-  GetDocDownloadSignedUrlResponse,
+  GetFileDownloadSignedUrlRequest,
+  GetFileDownloadSignedUrlResponse,
   DeleteFileResponse,
 } from 'generative-ai-use-cases-jp';
 import useHttp from './useHttp';
@@ -13,12 +11,32 @@ import axios from 'axios';
 
 const useFileApi = () => {
   const http = useHttp();
+  const parseS3Url = (s3Url: string) => {
+    let result = /^s3:\/\/(?<bucketName>.+?)\/(?<prefix>.+)/.exec(s3Url);
+
+    if (!result) {
+      result =
+        /^https:\/\/s3.(?<region>.+?).amazonaws.com\/(?<bucketName>.+?)\/(?<prefix>.+)$/.exec(
+          s3Url
+        );
+
+      if (!result) {
+        result =
+          /^https:\/\/(?<bucketName>.+?).s3(|(\.|-)(?<region>.+?)).amazonaws.com\/(?<prefix>.+)$/.exec(
+            s3Url
+          );
+      }
+    }
+
+    return result?.groups as {
+      bucketName: string;
+      prefix: string;
+      region?: string;
+    };
+  };
   return {
     getSignedUrl: (req: GetFileUploadSignedUrlRequest) => {
       return http.post<GetFileUploadSignedUrlResponse>('file/url', req);
-    },
-    recognizeFile: (req: RecognizeFileRequest) => {
-      return http.post<RecognizeFileResponse>('file/recognize', req);
     },
     uploadFile: (url: string, req: UploadFileRequest) => {
       return axios({
@@ -28,24 +46,29 @@ const useFileApi = () => {
         data: req.file,
       });
     },
-    getDocDownloadSignedUrl: async (s3Url: string) => {
+    getFileDownloadSignedUrl: async (s3Url: string) => {
+      const { bucketName, prefix, region } = parseS3Url(s3Url);
+
+      const [filePrefix, anchorLink] = prefix.split('#');
+
       // Signed URL を取得
-      const bucketName = s3Url.split('/')[2].split('.')[0];
-      const filePrefix = s3Url.split('/').slice(3).join('/');
-      const params: GetDocDownloadSignedUrlRequest = {
-        bucketName,
-        filePrefix,
+      const params: GetFileDownloadSignedUrlRequest = {
+        bucketName: bucketName,
+        filePrefix: decodeURIComponent(filePrefix),
+        region: region,
       };
-      const { data: url } = await http.api.get<GetDocDownloadSignedUrlResponse>(
-        '/file/url',
-        {
+      const { data: url } =
+        await http.api.get<GetFileDownloadSignedUrlResponse>('/file/url', {
           params,
-        }
-      );
-      return url;
+        });
+      return `${url}${anchorLink ? `#${anchorLink}` : ''}`;
     },
     deleteUploadedFile: async (fileName: string) => {
       return http.delete<DeleteFileResponse>(`file/${fileName}`);
+    },
+    getS3Uri: (s3Url: string) => {
+      const { bucketName, prefix } = parseS3Url(s3Url);
+      return `s3://${bucketName}/${prefix}`;
     },
   };
 };

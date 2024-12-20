@@ -15,6 +15,7 @@ import {
   PiPen,
   PiRobot,
   PiVideoCamera,
+  PiFlowArrow,
 } from 'react-icons/pi';
 import AwsIcon from '../assets/aws.svg?react';
 import useInterUseCases from '../hooks/useInterUseCases';
@@ -35,9 +36,19 @@ import queryString from 'query-string';
 import { MODELS } from '../hooks/useModel';
 
 const ragEnabled: boolean = import.meta.env.VITE_APP_RAG_ENABLED === 'true';
+const ragKnowledgeBaseEnabled: boolean =
+  import.meta.env.VITE_APP_RAG_KNOWLEDGE_BASE_ENABLED === 'true';
 const agentEnabled: boolean = import.meta.env.VITE_APP_AGENT_ENABLED === 'true';
-const { multiModalModelIds } = MODELS;
-const multiModalEnabled: boolean = multiModalModelIds.length > 0;
+const { visionEnabled } = MODELS;
+const getPromptFlows = () => {
+  try {
+    return JSON.parse(import.meta.env.VITE_APP_PROMPT_FLOWS);
+  } catch (e) {
+    return [];
+  }
+};
+const promptFlows = getPromptFlows();
+const promptFlowChatEnabled: boolean = promptFlows.length > 0;
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +68,13 @@ const LandingPage: React.FC = () => {
       content: `Claude のパラメータを説明し、その設定方法も教えてください。`,
     };
     navigate(`/rag?${queryString.stringify(params)}`);
+  };
+
+  const demoRagKnowledgeBase = () => {
+    const params: RagPageQueryParams = {
+      content: `Claude のパラメータを説明し、その設定方法も教えてください。`,
+    };
+    navigate(`/rag-knowledge-base?${queryString.stringify(params)}`);
   };
 
   const demoAgent = () => {
@@ -242,6 +260,10 @@ const LandingPage: React.FC = () => {
     ]);
   };
 
+  const demoPromptFlowChat = () => {
+    navigate(`/prompt-flow-chat`);
+  };
+
   return (
     <div className="pb-24">
       <div className="bg-aws-squid-ink flex flex-col items-center justify-center px-3 py-5 text-xl font-semibold text-white lg:flex-row">
@@ -270,9 +292,19 @@ const LandingPage: React.FC = () => {
         {ragEnabled && (
           <CardDemo
             label="RAG チャット"
+            sub="Amazon Kendra"
             onClickDemo={demoRag}
             icon={<PiChatCircleText />}
             description="RAG (Retrieval Augmented Generation) は、情報の検索と LLM の文章生成を組み合わせる手法のことで、効果的な情報アクセスを実現できます。Amazon Kendra から取得した参考ドキュメントをベースに LLM が回答を生成してくれるため、「社内情報に対応した LLM チャット」を簡単に実現することが可能です。"
+          />
+        )}
+        {ragKnowledgeBaseEnabled && (
+          <CardDemo
+            label="RAG チャット"
+            sub="Knowledge Base"
+            onClickDemo={demoRagKnowledgeBase}
+            icon={<PiChatCircleText />}
+            description="RAG (Retrieval Augmented Generation) は、情報の検索と LLM の文章生成を組み合わせる手法のことで、効果的な情報アクセスを実現できます。Knowledge Base の Hybrid Search を利用して参考ドキュメントを取得し、LLM が回答を生成します。"
           />
         )}
         {agentEnabled && (
@@ -280,7 +312,15 @@ const LandingPage: React.FC = () => {
             label="Agent チャット"
             onClickDemo={demoAgent}
             icon={<PiRobot />}
-            description="Agent チャットユースケースでは Agent for Amazon Bedrock を利用してアクションを実行させたり、Knowledge base for Amazon Bedrock のベクトルデータベースを参照することが可能です。"
+            description="Agent チャットユースケースでは Agents for Amazon Bedrock を利用してアクションを実行させたり、Knowledge Bases for Amazon Bedrock のベクトルデータベースを参照することが可能です。"
+          />
+        )}
+        {promptFlowChatEnabled && (
+          <CardDemo
+            label="Prompt Flow チャット"
+            onClickDemo={demoPromptFlowChat}
+            icon={<PiFlowArrow />}
+            description="Prompt Flow を使用して、複数のステップを持つ対話型チャットフローを作成します。ユーザーの入力に基づいて、動的に次のステップを決定し、より複雑な対話シナリオを実現します。"
           />
         )}
         <CardDemo
@@ -319,7 +359,7 @@ const LandingPage: React.FC = () => {
           icon={<PiImages />}
           description="画像生成 AI は、テキストや画像を元に新しい画像を生成できます。アイデアを即座に可視化することができ、デザイン作業などの効率化を期待できます。こちらの機能では、プロンプトの作成を LLM に支援してもらうことができます。"
         />
-        {multiModalEnabled && (
+        {visionEnabled && (
           <CardDemo
             label="映像分析"
             onClickDemo={demoVideoAnalyzer}

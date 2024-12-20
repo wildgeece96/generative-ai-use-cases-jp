@@ -11,6 +11,7 @@ export type GenerateImageParams = {
   imageStrength?: number;
   height: number;
   width: number;
+  aspectRatio?: string;
   // Image to Image
   initImage?: string;
   // Inpaint / Outpaint
@@ -44,9 +45,23 @@ export type StableDiffusionParams = {
   mask_image?: string;
 };
 
+export type StabilityAI2024ModelParams = {
+  prompt: string;
+  negative_prompt?: string;
+  aspect_ratio?: string;
+  seed?: number;
+  output_format?: string;
+  // Image to Image
+  image?: string;
+  mode?: string;
+  strength?: number;
+};
+
 // Titan Image
 // https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html
-export type TitanImageParams = {
+// Amazon Nova
+// https://docs.aws.amazon.com/nova/latest/userguide/image-gen-access.html
+export type AmazonImageParams = {
   taskType: 'TEXT_IMAGE' | 'INPAINTING' | 'OUTPAINTING' | 'IMAGE_VARIATION';
   textToImageParams?: {
     text: string;
@@ -88,5 +103,11 @@ export type BedrockImageGenerationResponse = {
   artifacts: {
     base64: string;
   }[];
+  images: string[];
+};
+
+export type StabilityAI2024ModelResponse = {
+  seeds: string[];
+  finish_reasons: (string | null)[];
   images: string[];
 };

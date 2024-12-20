@@ -1,4 +1,5 @@
 import { Model } from 'generative-ai-use-cases-jp';
+import { modelFeatureFlags } from '@generative-ai-use-cases-jp/common';
 
 const modelRegion = import.meta.env.VITE_APP_MODEL_REGION;
 
@@ -6,12 +7,10 @@ const modelRegion = import.meta.env.VITE_APP_MODEL_REGION;
 const bedrockModelIds: string[] = JSON.parse(import.meta.env.VITE_APP_MODEL_IDS)
   .map((name: string) => name.trim())
   .filter((name: string) => name);
-
-const multiModalModelIds: string[] = JSON.parse(
-  import.meta.env.VITE_APP_MULTI_MODAL_MODEL_IDS
-)
-  .map((name: string) => name.trim())
-  .filter((name: string) => name);
+const visionModelIds: string[] = bedrockModelIds.filter(
+  (modelId) => modelFeatureFlags[modelId].image
+);
+const visionEnabled: boolean = visionModelIds.length > 0;
 
 const endpointNames: string[] = JSON.parse(
   import.meta.env.VITE_APP_ENDPOINT_NAMES
@@ -28,6 +27,16 @@ const imageGenModelIds: string[] = JSON.parse(
 const agentNames: string[] = JSON.parse(import.meta.env.VITE_APP_AGENT_NAMES)
   .map((name: string) => name.trim())
   .filter((name: string) => name);
+
+const getPromptFlows = () => {
+  try {
+    return JSON.parse(import.meta.env.VITE_APP_PROMPT_FLOWS);
+  } catch (e) {
+    return [];
+  }
+};
+
+const promptFlows = getPromptFlows();
 
 // モデルオブジェクトの定義
 const textModels = [
@@ -58,10 +67,13 @@ export const findModelByModelId = (modelId: string) => {
 export const MODELS = {
   modelRegion: modelRegion,
   modelIds: [...bedrockModelIds, ...endpointNames],
-  multiModalModelIds: multiModalModelIds,
+  modelFeatureFlags: modelFeatureFlags,
+  visionModelIds: visionModelIds,
+  visionEnabled: visionEnabled,
   imageGenModelIds: imageGenModelIds,
   agentNames: agentNames,
   textModels: textModels,
   imageGenModels: imageGenModels,
   agentModels: agentModels,
+  promptFlows,
 };
