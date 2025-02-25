@@ -7,12 +7,18 @@ import { create } from 'zustand';
 import RowItem from '../../components/RowItem';
 import AppBuilderView from '../../components/useCaseBuilder/UseCaseBuilderView';
 import InputText from '../../components/InputText';
-import { PiPlus, PiQuestion, PiTrash, PiEye, PiX } from 'react-icons/pi';
+import {
+  PiPlus,
+  PiQuestion,
+  PiTrash,
+  PiEye,
+  PiX,
+  PiCircleFill,
+} from 'react-icons/pi';
 import useMyUseCases from '../../hooks/useCaseBuilder/useMyUseCases';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import useUseCase from '../../hooks/useCaseBuilder/useUseCase';
 import LoadingOverlay from '../../components/LoadingOverlay';
-import { ROUTE_INDEX_USE_CASE_BUILDER } from '../../main';
 import ModalDialogDeleteUseCase from '../../components/useCaseBuilder/ModalDialogDeleteUseCase';
 import UseCaseBuilderHelp from '../../components/useCaseBuilder/UseCaseBuilderHelp';
 import { UseCaseInputExample } from 'generative-ai-use-cases-jp';
@@ -272,6 +278,23 @@ const UseCaseBuilderEditPage: React.FC = () => {
 
   const [currentMenu, setCurrentMenu] = useState(menu[0]);
 
+  const dottedMenu = useMemo(() => {
+    const errorMenu = [...createErrorMessages, ...updateErrorMessages]
+      .map((e) => e.menu)
+      .filter((elem, idx, self) => self.indexOf(elem) === idx);
+
+    if (errorMenu.length > 0) {
+      return errorMenu;
+    } else {
+      // エラーがない場合は「更新」「作成」にドットを表示
+      if (isUpdate) {
+        return ['更新'];
+      } else {
+        return ['作成'];
+      }
+    }
+  }, [createErrorMessages, updateErrorMessages, isUpdate]);
+
   // ページタイトルの設定
   useEffect(() => {
     setPageTitle(isUpdate ? 'ユースケース編集' : 'ユースケース新規作成');
@@ -359,6 +382,7 @@ const UseCaseBuilderEditPage: React.FC = () => {
         .then(() => {
           // DB変更直後は更新ボタンをDisabledにする
           setIsDisabledUpdate(true);
+          setCurrentMenu(menu[0]);
         })
         .finally(() => {
           setIsPosting(false);
@@ -379,7 +403,7 @@ const UseCaseBuilderEditPage: React.FC = () => {
           await updateRecentUseUseCase(res.useCaseId);
 
           // 実行画面に遷移
-          navigate(`${ROUTE_INDEX_USE_CASE_BUILDER}/execute/${res.useCaseId}`);
+          navigate(`/use-case-builder/execute/${res.useCaseId}`);
         })
         .finally(() => {
           setIsPosting(false);
@@ -399,6 +423,7 @@ const UseCaseBuilderEditPage: React.FC = () => {
     useCaseId,
     fixedModelId,
     fileUpload,
+    menu,
   ]);
 
   const onClickDelete = useCallback(() => {
@@ -408,7 +433,7 @@ const UseCaseBuilderEditPage: React.FC = () => {
     setIsDeleting(true);
     deleteUseCase(useCaseId)
       .then(() => {
-        navigate(ROUTE_INDEX_USE_CASE_BUILDER);
+        navigate('/use-case-builder');
       })
       .finally(() => {
         setIsDeleting(false);
@@ -452,22 +477,32 @@ const UseCaseBuilderEditPage: React.FC = () => {
               return (
                 <div
                   key={idx}
-                  className={`text-aws-smile border-aws-smile cursor-pointer border-b-2 px-2 py-2 text-sm font-bold lg:border-b-0 lg:border-r-2`}
+                  className={`text-aws-smile border-aws-smile flex cursor-pointer flex-row border-b-2 px-2 py-2 text-sm font-bold lg:border-b-0 lg:border-r-2`}
                   onClick={() => {
                     setCurrentMenu(m);
                   }}>
                   {m}
+                  {dottedMenu.includes(m) && (
+                    <div className="ml-0.5">
+                      <PiCircleFill className="text-aws-smile text-[6px]" />
+                    </div>
+                  )}
                 </div>
               );
             } else {
               return (
                 <div
                   key={idx}
-                  className={`hover:text-aws-smile cursor-pointer border-b-2 border-gray-200 px-2 py-2 text-sm text-gray-800 lg:border-b-0 lg:border-r-2`}
+                  className={`hover:text-aws-smile flex cursor-pointer flex-row border-b-2 border-gray-200 px-2 py-2 text-sm text-gray-800 lg:border-b-0 lg:border-r-2`}
                   onClick={() => {
                     setCurrentMenu(m);
                   }}>
                   {m}
+                  {dottedMenu.includes(m) && (
+                    <div className="ml-0.5">
+                      <PiCircleFill className="text-aws-smile text-[6px]" />
+                    </div>
+                  )}
                 </div>
               );
             }
